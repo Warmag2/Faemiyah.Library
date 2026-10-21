@@ -1,0 +1,21 @@
+<Project>
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package metadata">
+    <Authors>Warma</Authors>
+    <Company>Faemiyah</Company>
+    <Product>Faemiyah UI</Product>
+    <Copyright>Faemiyah 2020-2026</Copyright>
+    <Description>Generic Blazor input and container components with a themeable stylesheet, usable from both Blazor Server and Blazor WebAssembly.</Description>
+    <PackageTags>blazor;razor;components;ui;forms</PackageTags>
+    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

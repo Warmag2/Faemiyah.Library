@@ -1,0 +1,120 @@
+@* An editable set of items, picked from Options through a combo box. *@
+@typeparam TItem
+
+<div>
+    @if (_displayAddDialog && Editable)
+    {
+        <FormComboBox TItem="string" Options="@_sortedOptionsNameDict" SelectedOption="@string.Empty" Disabled="@Disabled" ComparisonTimeStamp="@ComparisonTimeStamp" OnChanged="AddEntry" OnOutOfFocus="@HideAddDialog" />
+        <button type="button" class="fui-button fui-button-delete" disabled="@Disabled" @onclick="@HideAddDialog">X</button>
+    }
+    else if (ShowAddButton)
+    {
+        <button type="button" class="fui-button fui-button-add" disabled="@Disabled" @onclick="@ShowAddDialog">+</button>
+    }
+</div>
+
+<div class="fui-pickset">
+    @foreach (var item in _containedItemNames)
+    {
+        <div class="fui-pickset-item @FuiStyle.GetReminderClass(ComparisonTimeStamp, _updateTimeStamp)">
+            @item
+            <button type="button" class="fui-button fui-button-delete" style="@FuiStyle.HideElement(!Editable)" disabled="@Disabled" @onclick="() => DeleteEntry(item)">X</button>
+        </div>
+    }
+</div>
+
+@code
+{
+    private DateTime _updateTimeStamp = DateTime.MinValue;
+    private HashSet<string> _containedItemNames = [];
+    private bool _displayAddDialog;
+    private SortedDictionary<string, string> _sortedOptionsNameDict = [];
+
+    /// <summary>
+    /// The selectable items, keyed by display text.
+    /// </summary>
+    [Parameter]
+    public SortedDictionary<string, TItem> Options { get; set; } = [];
+
+    /// <summary>
+    /// The reminder class is shown while the set is older than this moment.
+    /// </summary>
+    [Parameter]
+    public DateTime ComparisonTimeStamp { get; set; }
+
+    /// <summary>
+    /// Initially contained items. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public HashSet<TItem> ContainedItems { get; set; } = [];
+
+    /// <summary>
+    /// Whether the buttons are disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Whether items can be added and removed.
+    /// </summary>
+    [Parameter]
+    public bool Editable { get; set; }
+
+    /// <summary>
+    /// Whether the button which opens the add dialog is shown.
+    /// </summary>
+    [Parameter]
+    public bool ShowAddButton { get; set; }
+
+    /// <summary>
+    /// Invoked with the new set of items after an item is added or removed.
+    /// </summary>
+    [Parameter]
+    public EventCallback<HashSet<TItem>> OnChanged { get; set; }
+
+    private void AddEntry(string item)
+    {
+        if (_containedItemNames.Add(item))
+        {
+            OnChanged.InvokeAsync(ProduceOutputType());
+            _updateTimeStamp = DateTime.UtcNow;
+        }
+    }
+
+    private void DeleteEntry(string item)
+    {
+        if (_containedItemNames.Remove(item))
+        {
+            OnChanged.InvokeAsync(ProduceOutputType());
+            _updateTimeStamp = DateTime.UtcNow;
+        }
+    }
+
+    private HashSet<TItem> ProduceOutputType()
+    {
+        return Options.Where(c => _containedItemNames.Contains(c.Key)).Select(c => c.Value).ToHashSet();
+    }
+
+    /// <summary>
+    /// Closes the add dialog.
+    /// </summary>
+    public void HideAddDialog()
+    {
+        _displayAddDialog = false;
+    }
+
+    /// <summary>
+    /// Opens the add dialog.
+    /// </summary>
+    public void ShowAddDialog()
+    {
+        _displayAddDialog = true;
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        _sortedOptionsNameDict = new SortedDictionary<string, string>(Options.ToDictionary(o => o.Key, o => o.Key));
+        _containedItemNames = Options.Where(o => ContainedItems.Contains(o.Value)).Select(o => o.Key).ToHashSet();
+    }
+}

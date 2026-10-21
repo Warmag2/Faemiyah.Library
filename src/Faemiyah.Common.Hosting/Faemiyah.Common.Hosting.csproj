@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>$(AssemblyName)</PackageId>
+    <Version>0.1.0</Version>
+    <PackageReadmeFile>README_Common.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>Faemiyah Common Hosting</Title>
+    <Product>Faemiyah Common</Product>
+    <Description>Server-side setup shared by Faemiyah programs: single-line console logging, JSON defaults for dependency injection and host network helpers.</Description>
+    <PackageTags>logging;hosting;json;common</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Faemiyah.Common\Faemiyah.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README_Common.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

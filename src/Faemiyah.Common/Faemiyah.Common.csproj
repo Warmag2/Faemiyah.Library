@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>$(AssemblyName)</PackageId>
+    <Version>0.1.0</Version>
+    <PackageReadmeFile>README_Common.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>Faemiyah Common</Title>
+    <Product>Faemiyah Common</Product>
+    <Description>Dependency-free defaults shared by Faemiyah programs, such as the JSON serializer settings. Usable from Blazor WebAssembly.</Description>
+    <PackageTags>json;common</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README_Common.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

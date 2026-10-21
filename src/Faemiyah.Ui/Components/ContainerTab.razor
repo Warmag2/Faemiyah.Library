@@ -1,0 +1,33 @@
+@* Content of a single tab, rendered only when the tab is selected and enabled. *@
+
+@if (TabIdentity == TabSelection && Enabled)
+{
+    @ChildContent
+}
+
+@code
+{
+    /// <summary>
+    /// Whether the tab may be shown.
+    /// </summary>
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Name of this tab.
+    /// </summary>
+    [Parameter]
+    public string? TabIdentity { get; set; }
+
+    /// <summary>
+    /// Name of the currently selected tab.
+    /// </summary>
+    [Parameter]
+    public string? TabSelection { get; set; }
+
+    /// <summary>
+    /// Content of the tab.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

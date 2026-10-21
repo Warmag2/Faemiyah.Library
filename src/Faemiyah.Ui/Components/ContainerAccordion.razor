@@ -1,0 +1,40 @@
+@* A collapsible section with a full-width header button. *@
+
+<button type="button" class="fui-accordion-button @FuiStyle.GetActiveClass(_enabled)" @onclick="@(() => _enabled = !_enabled)">
+    <span class="fui-accordion-indicator">
+        @(_enabled ? "-" : "+")
+    </span>
+    @Title
+</button>
+<div class="fui-accordion-content @FuiStyle.GetActiveClass(_enabled)" style="@FuiStyle.HideElement(!_enabled)">
+    @ChildContent
+</div>
+
+@code
+{
+    private bool _enabled;
+
+    /// <summary>
+    /// Whether the accordion is initially open. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Text of the header button.
+    /// </summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// Content shown when the accordion is open.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        _enabled = Enabled;
+    }
+}

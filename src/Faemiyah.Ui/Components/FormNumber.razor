@@ -1,0 +1,121 @@
+@* A number input which commits on blur, Enter or Escape, and clamps the value to [Min, Max]. *@
+
+<input class="fui-input fui-input-number @FuiStyle.GetReminderClass(ComparisonTimeStamp, _updateTimeStamp)" type="number" min="@Min" max="@Max" disabled="@Disabled"
+       @ref="_inputRef"
+       value="@_selectedOption"
+       @onfocus="OnFocus"
+       @oninput="OnInputChange"
+       @onchange="OnInputChange"
+       @onblur="CommitEdit"
+       @onkeydown="OnKeyDown" />
+
+@code
+{
+    private int _selectedOption;
+    private int _lastParameterValue;
+    private DateTime _updateTimeStamp;
+    private bool _isBeingEdited;
+    private ElementReference _inputRef;
+
+    /// <summary>
+    /// The value. Changes from the parent are applied whenever the parameter changes.
+    /// </summary>
+    [Parameter]
+    public int SelectedOption { get; set; }
+
+    /// <summary>
+    /// Smallest accepted value.
+    /// </summary>
+    [Parameter]
+    public int Min { get; set; }
+
+    /// <summary>
+    /// Largest accepted value.
+    /// </summary>
+    [Parameter]
+    public int Max { get; set; }
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// The reminder class is shown while the value is older than this moment.
+    /// </summary>
+    [Parameter]
+    public DateTime ComparisonTimeStamp { get; set; }
+
+    /// <summary>
+    /// Invoked with the clamped value when a value is committed.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnChanged { get; set; }
+
+    /// <summary>
+    /// Moves the focus to the input.
+    /// </summary>
+    /// <returns>A task which completes when the focus has moved.</returns>
+    public async Task FocusAsync()
+    {
+        await _inputRef.FocusAsync();
+    }
+
+    /// <inheritdoc />
+    protected override bool ShouldRender()
+    {
+        // Re-rendering while focused would overwrite the value being typed.
+        return !_isBeingEdited;
+    }
+
+    private void OnFocus()
+    {
+        _isBeingEdited = true;
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == "Escape")
+        {
+            CommitEdit();
+        }
+    }
+
+    private void OnInputChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var parsed))
+        {
+            _selectedOption = parsed;
+
+            // Spinner arrows can change the value without focusing the input.
+            if (!_isBeingEdited)
+            {
+                CommitValue();
+            }
+        }
+    }
+
+    private void CommitValue()
+    {
+        _selectedOption = Math.Clamp(_selectedOption, Min, Max);
+        _updateTimeStamp = DateTime.UtcNow;
+        OnChanged.InvokeAsync(_selectedOption);
+    }
+
+    private void CommitEdit()
+    {
+        _isBeingEdited = false;
+        CommitValue();
+    }
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        if (SelectedOption != _lastParameterValue)
+        {
+            _lastParameterValue = SelectedOption;
+            _selectedOption = SelectedOption;
+        }
+    }
+}

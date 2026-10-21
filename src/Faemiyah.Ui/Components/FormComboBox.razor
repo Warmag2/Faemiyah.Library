@@ -1,0 +1,194 @@
+@* A text input with a filtered drop-down list. Only keys of Options are accepted. *@
+@inherits BaseFaemiyahComponent
+@typeparam TItem
+
+@{
+    var invalidSelection = !Options.ContainsKey(SelectedOptionInternal);
+    var extraClass = string.Empty;
+
+    if (EnableErrorDisplay && invalidSelection)
+    {
+        extraClass = FuiStyle.Error;
+    }
+    else
+    {
+        extraClass = FuiStyle.GetReminderClass(ComparisonTimeStamp, _updateTimeStamp);
+    }
+}
+
+<div class="fui-input-wrapper fui-combobox">
+    <input class="fui-input fui-input-text fui-fullwidth @extraClass" type="text" disabled="@Disabled" @bind="SelectedOptionInternal" @oninput="AdjustOptionList" @onfocus="ShowComboBoxItems" @onfocusout="CheckHideComboBoxItems" @onkeypress="CheckForClose">
+
+    <div class="fui-combobox-list fui-fullwidth" style="@FuiStyle.HideElement(_comboBoxItemsHidden)">
+        @if (!_comboBoxItemsHidden)
+        {
+            @foreach (var key in Options.Keys.Where(k => k.Contains(_searchString, StringComparison.InvariantCultureIgnoreCase)))
+            {
+                var optionToSelect = key;
+                <div class="fui-combobox-item @(key.Equals(SelectedOptionInternal) ? FuiStyle.Active : string.Empty)" @onmouseover="SuppressOutOfFocus" @onmouseout="UnSuppressOutOfFocus" @onclick="@(() => SelectOptionImmediate(optionToSelect))">@key</div>
+            }
+        }
+    </div>
+</div>
+
+@code
+{
+    private string _selectedOption = string.Empty;
+    private string _searchString = string.Empty;
+    private bool _comboBoxItemsHidden = true;
+    private bool _suppressOutOfFocus;
+    private DateTime _updateTimeStamp = DateTime.MinValue;
+
+    /// <summary>
+    /// The selectable options, keyed by display text.
+    /// </summary>
+    [Parameter]
+    public SortedDictionary<string, TItem> Options { get; set; } = [];
+
+    /// <summary>
+    /// Initially selected value. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public TItem? SelectedOption { get; set; }
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// The reminder class is shown while the value is older than this moment.
+    /// </summary>
+    [Parameter]
+    public DateTime ComparisonTimeStamp { get; set; }
+
+    /// <summary>
+    /// Invoked when a valid option is selected or typed.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TItem> OnChanged { get; set; }
+
+    /// <summary>
+    /// Invoked when the drop-down list closes.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnOutOfFocus { get; set; }
+
+    /// <summary>
+    /// Whether to show the error class when the text is not a valid option.
+    /// </summary>
+    [Parameter]
+    public bool EnableErrorDisplay { get; set; }
+
+    /// <summary>
+    /// The current text. Setting a valid option key invokes <see cref="OnChanged"/>; other values are ignored.
+    /// </summary>
+    public string SelectedOptionInternal
+    {
+        get => _selectedOption;
+        set
+        {
+            if (CheckInputValidness(value))
+            {
+                _selectedOption = value;
+                _updateTimeStamp = DateTime.UtcNow;
+                OnChanged.InvokeAsync(Options[value]);
+                InvokeStateChange();
+            }
+        }
+    }
+
+    private void AdjustOptionList(ChangeEventArgs changeEventArgs)
+    {
+        _searchString = changeEventArgs.Value as string ?? string.Empty;
+
+        // An exact match is selected even if other options also contain the search string.
+        var optionsMatchingSearchString = Options.Keys.Where(k => k.Equals(_searchString, StringComparison.InvariantCultureIgnoreCase)).ToList();
+
+        SelectedOptionInternal = optionsMatchingSearchString.Count == 1 ? optionsMatchingSearchString[0] : _searchString;
+    }
+
+    private void SelectOptionImmediate(string option)
+    {
+        SelectedOptionInternal = option;
+        _comboBoxItemsHidden = true;
+        OnOutOfFocus.InvokeAsync();
+    }
+
+    private bool CheckInputValidness(string? input)
+    {
+        return input != null && Options.ContainsKey(input);
+    }
+
+    private void CheckForClose(KeyboardEventArgs keyboardEventArgs)
+    {
+        if (keyboardEventArgs.Key == "Enter")
+        {
+            HideComboBoxItems();
+        }
+    }
+
+    private void ShowComboBoxItems()
+    {
+        if (!Disabled)
+        {
+            _comboBoxItemsHidden = false;
+            _suppressOutOfFocus = false;
+        }
+    }
+
+    private void HideComboBoxItems()
+    {
+        var optionsContainingSearchString = Options.Keys.Where(k => k.Contains(_searchString, StringComparison.InvariantCultureIgnoreCase)).ToList();
+
+        // A single candidate is selected immediately.
+        if (optionsContainingSearchString.Count == 1)
+        {
+            SelectedOptionInternal = optionsContainingSearchString[0];
+        }
+        else
+        {
+            var optionsMatchingSearchString = optionsContainingSearchString.Where(k => k.Equals(_searchString, StringComparison.InvariantCultureIgnoreCase)).ToList();
+
+            if (optionsMatchingSearchString.Count == 1)
+            {
+                SelectedOptionInternal = optionsMatchingSearchString[0];
+            }
+        }
+
+        _comboBoxItemsHidden = true;
+        OnOutOfFocus.InvokeAsync();
+    }
+
+    private void CheckHideComboBoxItems()
+    {
+        if (!_suppressOutOfFocus)
+        {
+            HideComboBoxItems();
+        }
+    }
+
+    private void SuppressOutOfFocus()
+    {
+        _suppressOutOfFocus = true;
+    }
+
+    private void UnSuppressOutOfFocus()
+    {
+        _suppressOutOfFocus = false;
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        var comparer = EqualityComparer<TItem>.Default;
+        var matchingOptions = Options.Where(o => comparer.Equals(o.Value, SelectedOption!)).Take(1).ToList();
+
+        if (matchingOptions.Count == 1)
+        {
+            SelectedOptionInternal = matchingOptions[0].Key;
+            _updateTimeStamp = DateTime.MinValue;
+        }
+    }
+}

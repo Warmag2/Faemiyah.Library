@@ -1,0 +1,18 @@
+@* A tooltip element which follows the cursor over elements carrying data-fui-tooltip="{Id}". *@
+
+<div id="@Id" class="fui-tooltip @Class"></div>
+
+@code
+{
+    /// <summary>
+    /// Element id referenced by the <c>data-fui-tooltip</c> attribute of the target elements.
+    /// </summary>
+    [Parameter]
+    public string Id { get; set; } = "fui-tooltip";
+
+    /// <summary>
+    /// Extra classes for the tooltip element.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+}

@@ -1,0 +1,70 @@
+@* A single-line text input which can reject values listed by InvalidOptionGenerator. *@
+
+<input class="fui-input fui-input-text fui-fullwidth @(_erroneousInput ? FuiStyle.Error : string.Empty) @FuiStyle.GetReminderClass(ComparisonTimeStamp, _updateTimeStamp)" type="text" disabled="@Disabled" @bind="SelectedOptionInternal">
+
+@code
+{
+    private string? _selectedOption;
+    private bool _erroneousInput;
+    private DateTime _updateTimeStamp = DateTime.MinValue;
+
+    /// <summary>
+    /// Initial text. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public string? SelectedOption { get; set; }
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// The reminder class is shown while the value is older than this moment.
+    /// </summary>
+    [Parameter]
+    public DateTime ComparisonTimeStamp { get; set; }
+
+    /// <summary>
+    /// Invoked with accepted text, and also once during initialization.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string?> OnChanged { get; set; }
+
+    /// <summary>
+    /// Produces values which are rejected and marked with the error class.
+    /// </summary>
+    [Parameter]
+    public Func<IEnumerable<string>>? InvalidOptionGenerator { get; set; }
+
+    /// <summary>
+    /// The current text. Setting accepted text invokes <see cref="OnChanged"/>.
+    /// </summary>
+    public string? SelectedOptionInternal
+    {
+        get => _selectedOption;
+        set
+        {
+            _selectedOption = value;
+            _updateTimeStamp = DateTime.UtcNow;
+
+            if (InvalidOptionGenerator == null || !InvalidOptionGenerator().Contains(value))
+            {
+                OnChanged.InvokeAsync(value);
+                _erroneousInput = false;
+            }
+            else
+            {
+                _erroneousInput = true;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        SelectedOptionInternal = SelectedOption;
+        _updateTimeStamp = DateTime.MinValue;
+    }
+}

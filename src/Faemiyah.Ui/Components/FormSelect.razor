@@ -1,0 +1,80 @@
+@* A drop-down select. *@
+@typeparam TItem
+
+<select class="fui-input fui-input-select @FuiStyle.GetReminderClass(ComparisonTimeStamp, _updateTimeStamp)" disabled="@Disabled" @bind="SelectedOptionInternal">
+    @foreach (var key in Options.Keys)
+    {
+        if (key.Equals(SelectedOptionInternal))
+        {
+            <option value="@key" selected>@key</option>
+        }
+        else
+        {
+            <option value="@key">@key</option>
+        }
+    }
+</select>
+
+@code
+{
+    private string? _selectedOption;
+    private DateTime _updateTimeStamp = DateTime.MinValue;
+
+    /// <summary>
+    /// The selectable options, keyed by display text.
+    /// </summary>
+    [Parameter]
+    public IDictionary<string, TItem> Options { get; set; } = new Dictionary<string, TItem>();
+
+    /// <summary>
+    /// Initially selected value. The first option is used if this is not one of the options. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public TItem? SelectedOption { get; set; }
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// The reminder class is shown while the value is older than this moment.
+    /// </summary>
+    [Parameter]
+    public DateTime ComparisonTimeStamp { get; set; }
+
+    /// <summary>
+    /// Invoked when an option is selected, and also once during initialization.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TItem> OnChanged { get; set; }
+
+    /// <summary>
+    /// Key of the selected option. Setting a valid key invokes <see cref="OnChanged"/>.
+    /// </summary>
+    public string? SelectedOptionInternal
+    {
+        get => _selectedOption;
+        set
+        {
+            _selectedOption = value;
+            _updateTimeStamp = DateTime.UtcNow;
+
+            if (Options.TryGetValue(value ?? string.Empty, out var item))
+            {
+                OnChanged.InvokeAsync(item);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        var comparer = EqualityComparer<TItem>.Default;
+        var selected = Options.FirstOrDefault(o => comparer.Equals(o.Value, SelectedOption!));
+
+        SelectedOptionInternal = selected.Key ?? Options.Keys.FirstOrDefault();
+        _updateTimeStamp = DateTime.MinValue;
+    }
+}

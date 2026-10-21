@@ -1,0 +1,118 @@
+@* A list whose items can be reordered with drag and drop. The list is modified in place. *@
+@typeparam TItem
+
+<div class="fui-reorderable-list @ContainerClass" ondragover="event.preventDefault();">
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var capturedIndex = i;
+        <div class="fui-reorderable-item @(ShowDragHandle ? string.Empty : "fui-draggable") @ItemClass @(ItemClassSelector?.Invoke(Items[capturedIndex]) ?? string.Empty)"
+             draggable="@(ShowDragHandle ? "false" : "true")"
+             @ondragstart="() => StartDrag(capturedIndex)"
+             @ondragstart:stopPropagation="true"
+             @ondragend="CancelDrag"
+             @ondragend:stopPropagation="true"
+             @ondrop="() => Drop(capturedIndex)"
+             @ondrop:stopPropagation="_draggedIndex.HasValue"
+             ondragover="event.preventDefault();">
+            @if (ShowDragHandle)
+            {
+                <div class="fui-reorderable-row">
+                    <div class="fui-drag-handle"
+                         draggable="true"
+                         @ondragstart="() => StartDrag(capturedIndex)"
+                         @ondragstart:stopPropagation="true">⠿</div>
+                    <div class="fui-reorderable-cell">
+                        @ItemTemplate(Items[capturedIndex])
+                    </div>
+                </div>
+            }
+            else
+            {
+                @ItemTemplate(Items[capturedIndex])
+            }
+        </div>
+    }
+    <div class="fui-reorderable-sentinel"
+         @ondrop="() => Drop(Items.Count)"
+         @ondrop:stopPropagation="_draggedIndex.HasValue"
+         ondragover="event.preventDefault();">
+    </div>
+</div>
+
+@code
+{
+    private int? _draggedIndex;
+
+    /// <summary>
+    /// The items to display. Reordering moves items within this list.
+    /// </summary>
+    [Parameter]
+    public IList<TItem> Items { get; set; } = [];
+
+    /// <summary>
+    /// Template for rendering a single item.
+    /// </summary>
+    [Parameter]
+    public RenderFragment<TItem> ItemTemplate { get; set; } = _ => _ => { };
+
+    /// <summary>
+    /// Invoked after an item has been moved.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    /// <summary>
+    /// Extra classes for the list container.
+    /// </summary>
+    [Parameter]
+    public string ContainerClass { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Extra classes for every item.
+    /// </summary>
+    [Parameter]
+    public string ItemClass { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Produces extra classes for a single item.
+    /// </summary>
+    [Parameter]
+    public Func<TItem, string>? ItemClassSelector { get; set; }
+
+    /// <summary>
+    /// Whether items are dragged by a separate handle instead of the whole item.
+    /// </summary>
+    [Parameter]
+    public bool ShowDragHandle { get; set; }
+
+    internal void StartDrag(int index)
+    {
+        _draggedIndex = index;
+    }
+
+    internal void CancelDrag()
+    {
+        _draggedIndex = null;
+    }
+
+    internal void Drop(int targetIndex)
+    {
+        if (_draggedIndex.HasValue)
+        {
+            var from = _draggedIndex.Value;
+
+            // Removal shifts the elements after the dragged position down by one.
+            var adjustedTarget = targetIndex > from ? targetIndex - 1 : targetIndex;
+
+            if (from != adjustedTarget)
+            {
+                var item = Items[from];
+                Items.RemoveAt(from);
+                Items.Insert(adjustedTarget, item);
+                OnChanged.InvokeAsync();
+            }
+        }
+
+        _draggedIndex = null;
+    }
+}

@@ -1,0 +1,175 @@
+@* Displays a number which can be picked from brackets or, after clicking it, typed directly. *@
+
+@{
+    var numberPrefix = DisplayNumberPrefix && NumberToDisplay >= 0 ? "+" : string.Empty;
+}
+
+<div class="fui-input-wrapper">
+    @if (_editingDirectly)
+    {
+        <FormNumber @ref="_formNumber" SelectedOption="@_selectedOption" Min="@_min" Max="@_max" Disabled="@Disabled" OnChanged="OnFormNumberCommit" />
+    }
+    else
+    {
+        <span class="fui-number-display @(StyleSelectorDelegate?.Invoke(_selectedOption))" @onclick="StartDirectEdit">@($"{numberPrefix}{NumberToDisplay}")</span>
+    }
+
+    <button type="button" class="fui-button" disabled="@Disabled" @onclick="Pick">▾</button>
+
+    <div class="fui-picker" style="@FuiStyle.HideElement(_selectionBoxHidden)">
+        @foreach (var option in _options)
+        {
+            var optionToSelect = option.End;
+            var active = _selectedOption >= option.Begin && _selectedOption <= option.End;
+            <div class="fui-picker-item @(active ? FuiStyle.Active : string.Empty)" @onclick="@(() => SelectOptionManual(optionToSelect))">@option.ToString(DisplayNumberPrefix)</div>
+        }
+    </div>
+</div>
+
+@code
+{
+    private int _selectedOption;
+    private bool _selectionBoxHidden = true;
+    private bool _editingDirectly;
+    private bool _focusPending;
+    private FormNumber? _formNumber;
+    private int _min;
+    private int _max;
+    private IReadOnlyList<PickBracket> _options = [];
+
+    /// <summary>
+    /// Produces the brackets once during initialization. They also define the range accepted from typing.
+    /// </summary>
+    [Parameter]
+    public Func<IReadOnlyList<PickBracket>> BracketCreatorDelegate { get; set; } = () => [new PickBracket()];
+
+    /// <summary>
+    /// Produces extra classes for the displayed number.
+    /// </summary>
+    [Parameter]
+    public Func<int, string>? StyleSelectorDelegate { get; set; }
+
+    /// <summary>
+    /// The number to display. Also the initial value.
+    /// </summary>
+    [Parameter]
+    public int NumberToDisplay { get; set; }
+
+    /// <summary>
+    /// Whether to prefix non-negative numbers with <c>+</c>.
+    /// </summary>
+    [Parameter]
+    public bool DisplayNumberPrefix { get; set; }
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Caller-defined value passed back through <see cref="OnChangedWithHint"/>.
+    /// </summary>
+    [Parameter]
+    public string? Hint { get; set; }
+
+    /// <summary>
+    /// Invoked when the value changes, and also once during initialization.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnChanged { get; set; }
+
+    /// <summary>
+    /// Invoked with <see cref="Hint"/> when the value changes, and also once during initialization.
+    /// </summary>
+    [Parameter]
+    public EventCallback<(string?, int)> OnChangedWithHint { get; set; }
+
+    /// <summary>
+    /// The current value. Setting it closes the drop-down and invokes the change callbacks.
+    /// </summary>
+    public int SelectedOptionInternal
+    {
+        get => _selectedOption;
+        set
+        {
+            _selectedOption = value;
+            HideSelectionBox();
+
+            if (OnChanged.HasDelegate)
+            {
+                OnChanged.InvokeAsync(value);
+            }
+
+            if (OnChangedWithHint.HasDelegate)
+            {
+                OnChangedWithHint.InvokeAsync((Hint, value));
+            }
+        }
+    }
+
+    private void OnFormNumberCommit(int value)
+    {
+        _editingDirectly = false;
+        SelectedOptionInternal = value;
+    }
+
+    private void StartDirectEdit()
+    {
+        if (!Disabled)
+        {
+            HideSelectionBox();
+            _editingDirectly = true;
+            _focusPending = true;
+        }
+    }
+
+    private void Pick()
+    {
+        if (_selectionBoxHidden)
+        {
+            if (!Disabled)
+            {
+                ShowSelectionBox();
+            }
+        }
+        else
+        {
+            HideSelectionBox();
+        }
+    }
+
+    private void ShowSelectionBox()
+    {
+        _selectionBoxHidden = false;
+    }
+
+    private void HideSelectionBox()
+    {
+        _selectionBoxHidden = true;
+    }
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending && _formNumber != null)
+        {
+            _focusPending = false;
+            await _formNumber.FocusAsync();
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        _options = BracketCreatorDelegate();
+        _min = _options.Min(b => b.Begin);
+        _max = _options.Max(b => b.End);
+        SelectedOptionInternal = NumberToDisplay;
+    }
+
+    private void SelectOptionManual(int optionToSelect)
+    {
+        SelectedOptionInternal = optionToSelect;
+    }
+}

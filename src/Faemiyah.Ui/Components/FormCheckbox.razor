@@ -1,0 +1,63 @@
+@* A styled checkbox with a label. *@
+
+<label class="fui-checkbox @FuiStyle.GetReminderClass(ComparisonTimeStamp, _updateTimeStamp)">
+    <span>@ChildContent</span>
+    <input type="checkbox" disabled="@Disabled" @bind="CheckedInternal">
+    <span class="fui-checkmark"></span>
+</label>
+
+@code
+{
+    private bool _checked;
+    private DateTime _updateTimeStamp = DateTime.MinValue;
+
+    /// <summary>
+    /// Initial state. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public bool Checked { get; set; }
+
+    /// <summary>
+    /// Whether the input is disabled.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// The reminder class is shown while the value is older than this moment.
+    /// </summary>
+    [Parameter]
+    public DateTime ComparisonTimeStamp { get; set; }
+
+    /// <summary>
+    /// Label content.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Invoked when the state changes, and also once during initialization.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> OnChanged { get; set; }
+
+    /// <summary>
+    /// The current state. Setting it invokes <see cref="OnChanged"/>.
+    /// </summary>
+    public bool CheckedInternal
+    {
+        get => _checked;
+        set
+        {
+            _checked = value;
+            _updateTimeStamp = DateTime.UtcNow;
+            OnChanged.InvokeAsync(value);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        CheckedInternal = Checked;
+    }
+}

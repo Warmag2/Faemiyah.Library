@@ -1,0 +1,51 @@
+@* Shows one of two contents and a button for switching between them. *@
+
+<div class="fui-expander">
+    @if (_enabled)
+    {
+        @ChildContentEnabled
+    }
+    else
+    {
+        @ChildContentDisabled
+    }
+    <button type="button" class="fui-expander-button @FuiStyle.GetActiveClass(!_enabled)" @onclick="@(() => _enabled = !_enabled)">
+        @if (_enabled)
+        {
+            <span>&#9654;</span>
+        }
+        else
+        {
+            <span>&#x25BC;</span>
+        }
+    </button>
+</div>
+
+@code
+{
+    private bool _enabled;
+
+    /// <summary>
+    /// Whether the enabled content is initially shown. Only read when the component is initialized.
+    /// </summary>
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Content shown when the expander is enabled.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContentEnabled { get; set; }
+
+    /// <summary>
+    /// Content shown when the expander is disabled.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContentDisabled { get; set; }
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        _enabled = Enabled;
+    }
+}

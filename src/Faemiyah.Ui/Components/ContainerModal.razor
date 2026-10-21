@@ -1,0 +1,60 @@
+@* A modal dialog. The footer is rendered only when OnPrimary has a delegate. *@
+
+<div class="fui-modal-background">
+    <div class="fui-modal" role="dialog">
+        <div class="fui-modal-header">
+            <h3 class="fui-modal-title">@Title</h3>
+            <button type="button" class="fui-modal-close" @onclick="OnClose">&times;</button>
+        </div>
+
+        <div class="fui-modal-body">
+            @ChildContent
+        </div>
+
+        @if (OnPrimary.HasDelegate)
+        {
+            <div class="fui-modal-footer">
+                <button type="button" class="fui-button" @onclick="OnPrimary">@PrimaryText</button>
+                <button type="button" class="fui-button" @onclick="OnClose">@CancelText</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Title of the dialog.
+    /// </summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// Text of the primary button.
+    /// </summary>
+    [Parameter]
+    public string PrimaryText { get; set; } = "Submit";
+
+    /// <summary>
+    /// Text of the cancel button.
+    /// </summary>
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Body of the dialog.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Invoked by the primary button. The footer is hidden when this has no delegate.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnPrimary { get; set; }
+
+    /// <summary>
+    /// Invoked by the close and cancel buttons.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+}

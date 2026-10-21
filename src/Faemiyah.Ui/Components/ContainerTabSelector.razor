@@ -1,0 +1,55 @@
+@* A row of tab buttons. The selection is owned by the parent; see ContainerTab. *@
+@inherits BaseFaemiyahComponent
+
+<div class="fui-tabs" style="@FuiStyle.HideElement(!Enabled)">
+    @foreach (var tab in TabNames)
+    {
+        <div class="fui-tab">
+            <button type="button" class="@FuiStyle.GetActiveClass(SelectedTab == tab)" @onclick="@(() => Select(tab))">@tab</button>
+        </div>
+    }
+    @ChildContent
+</div>
+
+@code
+{
+    /// <summary>
+    /// Whether the tab row is shown.
+    /// </summary>
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Name of the currently selected tab.
+    /// </summary>
+    [Parameter]
+    public string? SelectedTab { get; set; }
+
+    /// <summary>
+    /// Names of the tabs, in display order.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> TabNames { get; set; } = [];
+
+    /// <summary>
+    /// Extra content rendered after the tab buttons.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Invoked with the name of the tab the user selected.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnTabSelected { get; set; }
+
+    /// <summary>
+    /// Selects a tab as if the user had clicked it.
+    /// </summary>
+    /// <param name="input">Name of the tab.</param>
+    public void Select(string input)
+    {
+        OnTabSelected.InvokeAsync(input);
+        InvokeStateChange();
+    }
+}

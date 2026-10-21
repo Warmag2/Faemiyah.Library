@@ -1,0 +1,575 @@
+/*******************************************************************************
+    Faemiyah UI
+
+    Override the variables below on :root (or on any ancestor element) to theme
+    the components.
+*******************************************************************************/
+
+:root {
+    --fui-font-family-control: Tahoma, Verdana, sans-serif;
+    --fui-color-bg-base: #FFFFFF;
+    --fui-color-bg-component: #F0F0F0;
+    --fui-color-text-base: #000000;
+    --fui-color-bg-input: #FFFFFF;
+    --fui-color-text-input: #000000;
+    --fui-color-outline-base: gray;
+    --fui-color-bg-unselected: #E0E0E0;
+    --fui-color-text-unselected: #000000;
+    --fui-color-bg-selected: #646464;
+    --fui-color-text-selected: #FFFFFF;
+    --fui-color-bg-hover: #B1C1FF;
+    --fui-color-text-hover: #000000;
+    --fui-color-bg-hover-selected: #7080B1;
+    --fui-color-text-hover-selected: #FFFFFF;
+    --fui-color-bg-disabled: #D4D0C8;
+    --fui-color-text-disabled: #808080;
+    --fui-color-bg-disabled-selected: #8D8D8D;
+    --fui-color-text-disabled-selected: #E2DDD6;
+    --fui-color-bg-error: #FFB0B0;
+    --fui-color-text-error: #B00000;
+    --fui-color-bg-dragdrop: #CCAAFF;
+    --fui-color-bg-dragdrop-dropover: #AA88DD;
+    --fui-color-outline-reminder: #706050;
+    --fui-color-bg-reminder: #F8E8B0;
+    --fui-color-text-reminder: #000000;
+    --fui-color-bg-reminder-selected: #706050;
+    --fui-color-text-reminder-selected: #FFFFFF;
+    --fui-color-bg-tooltip: cornsilk;
+    --fui-color-text-tooltip: #000000;
+    --fui-color-outline-tooltip: black;
+    --fui-color-bg-modal-overlay: rgba(0, 0, 0, 0.4);
+    --fui-z-dropdown: 9999;
+    --fui-z-modal: 1;
+    --fui-z-tooltip: 10000;
+}
+
+/*******************************************************************************
+    State modifiers
+*******************************************************************************/
+
+.fui-reminder {
+    outline: 2px inset var(--fui-color-outline-reminder);
+    outline-offset: -2px;
+}
+
+/*******************************************************************************
+    Generic inputs
+*******************************************************************************/
+
+.fui-input {
+    background: var(--fui-color-bg-input);
+    color: var(--fui-color-text-input);
+}
+
+.fui-fullwidth {
+    width: 100%;
+}
+
+.fui-input.fui-reminder {
+    background-color: var(--fui-color-bg-reminder);
+    color: var(--fui-color-text-reminder);
+}
+
+.fui-input.fui-error {
+    background: var(--fui-color-bg-error);
+    color: var(--fui-color-text-error);
+}
+
+/*******************************************************************************
+    Buttons
+*******************************************************************************/
+
+.fui-button-add,
+.fui-button-delete {
+    font-weight: bold;
+}
+
+/*******************************************************************************
+    Toggle and radio inputs
+*******************************************************************************/
+
+.fui-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.fui-toggle-radio {
+    position: relative;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    font-family: var(--fui-font-family-control);
+}
+
+    /* Hide the browser's own input. */
+    .fui-toggle-radio input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+.fui-toggle-radio-label {
+    display: inline-block;
+    position: relative;
+    padding-left: 4px;
+    padding-right: 4px;
+    vertical-align: middle;
+    margin-left: 0;
+    margin-right: 0;
+    border: 1px outset var(--fui-color-outline-base);
+    background-color: var(--fui-color-bg-unselected);
+    color: var(--fui-color-text-unselected);
+}
+
+.fui-toggle-radio:hover input ~ .fui-toggle-radio-label {
+    background-color: var(--fui-color-bg-hover);
+    color: var(--fui-color-text-hover);
+}
+
+.fui-toggle-radio:hover input:checked ~ .fui-toggle-radio-label {
+    background-color: var(--fui-color-bg-hover-selected);
+    color: var(--fui-color-text-hover-selected);
+}
+
+.fui-toggle-radio input:checked ~ .fui-toggle-radio-label {
+    background-color: var(--fui-color-bg-selected);
+    color: var(--fui-color-text-selected);
+}
+
+.fui-toggle-radio-label.fui-reminder {
+    background-color: var(--fui-color-bg-reminder);
+    color: var(--fui-color-text-reminder);
+}
+
+.fui-toggle-radio input:checked ~ .fui-toggle-radio-label.fui-reminder {
+    background-color: var(--fui-color-bg-reminder-selected);
+    color: var(--fui-color-text-reminder-selected);
+}
+
+.fui-toggle-radio-label.fui-disabled {
+    background-color: var(--fui-color-bg-disabled);
+    color: var(--fui-color-text-disabled);
+}
+
+.fui-toggle-radio input:checked ~ .fui-toggle-radio-label.fui-disabled {
+    background-color: var(--fui-color-bg-disabled-selected);
+    color: var(--fui-color-text-disabled-selected);
+}
+
+.fui-toggle-radio-label.fui-error {
+    background: var(--fui-color-bg-error);
+    color: var(--fui-color-text-error);
+}
+
+/*******************************************************************************
+    Checkbox
+*******************************************************************************/
+
+.fui-checkbox {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    user-select: none;
+}
+
+    /* Hide the browser's own input. */
+    .fui-checkbox input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+
+.fui-checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 25px;
+    width: 25px;
+    border: 1px solid var(--fui-color-text-selected);
+}
+
+.fui-checkbox input ~ .fui-checkmark {
+    background-color: var(--fui-color-bg-unselected);
+}
+
+.fui-checkbox input:checked ~ .fui-checkmark {
+    background-color: var(--fui-color-bg-selected);
+}
+
+.fui-checkbox:hover input ~ .fui-checkmark {
+    background-color: var(--fui-color-bg-hover);
+}
+
+.fui-checkbox:hover input:checked ~ .fui-checkmark {
+    background-color: var(--fui-color-bg-hover-selected);
+}
+
+.fui-checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.fui-checkbox input:checked ~ .fui-checkmark:after {
+    display: block;
+}
+
+.fui-checkbox .fui-checkmark:after {
+    left: 9px;
+    top: 5px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+}
+
+/*******************************************************************************
+    Input wrapper, combo box and number picker
+*******************************************************************************/
+
+/* Anchors the drop-downs below the input. */
+.fui-input-wrapper {
+    position: relative;
+    display: inline-flex;
+    flex: 1;
+}
+
+    .fui-input-wrapper.fui-combobox {
+        max-width: 25rem;
+    }
+
+.fui-combobox-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    overflow-y: auto;
+    max-height: 300px;
+    z-index: var(--fui-z-dropdown);
+}
+
+.fui-combobox-item {
+    border: 1px outset var(--fui-color-outline-base);
+    background-color: var(--fui-color-bg-unselected);
+    color: var(--fui-color-text-unselected);
+}
+
+.fui-picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    overflow-y: auto;
+    width: 16rem;
+    z-index: var(--fui-z-dropdown);
+}
+
+.fui-picker-item {
+    border: 1px outset var(--fui-color-outline-base);
+    float: left;
+    padding: 0.2rem 0.3rem;
+    vertical-align: middle;
+    margin-left: 0;
+    margin-right: 0;
+    background-color: var(--fui-color-bg-unselected);
+    color: var(--fui-color-text-unselected);
+}
+
+.fui-combobox-item.fui-active,
+.fui-picker-item.fui-active {
+    background-color: var(--fui-color-bg-selected);
+    color: var(--fui-color-text-selected);
+}
+
+.fui-combobox-item:hover,
+.fui-picker-item:hover {
+    background-color: var(--fui-color-bg-hover);
+    color: var(--fui-color-text-hover);
+}
+
+.fui-combobox-item.fui-active:hover,
+.fui-picker-item.fui-active:hover {
+    background-color: var(--fui-color-bg-hover-selected);
+    color: var(--fui-color-text-hover-selected);
+}
+
+.fui-number-display {
+    padding: 0.2rem 0.3rem;
+    font-weight: bold;
+}
+
+/*******************************************************************************
+    Pick set
+*******************************************************************************/
+
+.fui-pickset {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.fui-pickset-item {
+    padding: 1px 4px;
+    margin-left: 2px;
+    margin-right: 2px;
+    border: 1px outset var(--fui-color-outline-base);
+    border-radius: 2px;
+    background-color: var(--fui-color-bg-unselected);
+    color: var(--fui-color-text-unselected);
+    font-family: var(--fui-font-family-control);
+}
+
+/*******************************************************************************
+    Tabs
+*******************************************************************************/
+
+.fui-tabs {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    background-color: var(--fui-color-bg-unselected);
+}
+
+    .fui-tab button {
+        background-color: var(--fui-color-bg-unselected);
+        color: var(--fui-color-text-unselected);
+        border: none;
+        outline: none;
+        cursor: pointer;
+        padding: 10px 14px;
+        font-size: 17px;
+    }
+
+        .fui-tab button:hover {
+            background-color: var(--fui-color-bg-hover);
+            color: var(--fui-color-text-hover);
+        }
+
+        .fui-tab button.fui-active {
+            background-color: var(--fui-color-bg-selected);
+            color: var(--fui-color-text-selected);
+        }
+
+            .fui-tab button.fui-active:hover {
+                background-color: var(--fui-color-bg-hover-selected);
+                color: var(--fui-color-text-hover-selected);
+            }
+
+/*******************************************************************************
+    Accordion
+*******************************************************************************/
+
+.fui-accordion-button {
+    background-color: var(--fui-color-bg-unselected);
+    color: var(--fui-color-text-unselected);
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 10px 14px;
+    font-size: 18px;
+    text-align: left;
+    width: 100%;
+}
+
+    .fui-accordion-button:hover {
+        background-color: var(--fui-color-bg-hover);
+        color: var(--fui-color-text-hover);
+    }
+
+    .fui-accordion-button.fui-active {
+        background-color: var(--fui-color-bg-selected);
+        color: var(--fui-color-text-selected);
+    }
+
+        .fui-accordion-button.fui-active:hover {
+            background-color: var(--fui-color-bg-hover-selected);
+            color: var(--fui-color-text-hover-selected);
+        }
+
+.fui-accordion-content {
+    padding: 0;
+}
+
+.fui-accordion-indicator {
+    font-weight: bolder;
+    padding-right: 0.5em;
+}
+
+/*******************************************************************************
+    Expander
+*******************************************************************************/
+
+.fui-expander {
+    position: relative;
+    background-color: var(--fui-color-bg-component);
+    color: var(--fui-color-text-base);
+}
+
+.fui-expander-button {
+    background-color: var(--fui-color-bg-unselected);
+    color: var(--fui-color-text-unselected);
+    cursor: pointer;
+    padding: 2px 8px;
+    font-size: 18px;
+    font-weight: bolder;
+    text-align: left;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+    .fui-expander-button:hover {
+        background-color: var(--fui-color-bg-hover);
+        color: var(--fui-color-text-hover);
+    }
+
+    .fui-expander-button.fui-active {
+        background-color: var(--fui-color-bg-selected);
+        color: var(--fui-color-text-selected);
+    }
+
+        .fui-expander-button.fui-active:hover {
+            background-color: var(--fui-color-bg-hover-selected);
+            color: var(--fui-color-text-hover-selected);
+        }
+
+/*******************************************************************************
+    Modal
+*******************************************************************************/
+
+.fui-modal-background {
+    position: fixed;
+    z-index: var(--fui-z-modal);
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: var(--fui-color-bg-modal-overlay);
+}
+
+.fui-modal {
+    background-color: var(--fui-color-bg-base);
+    margin: 10% auto;
+    padding: 1rem 2rem 2rem 2rem;
+    border: 1px solid var(--fui-color-outline-base);
+    width: fit-content;
+    max-width: calc(100% - 2rem);
+    box-sizing: border-box;
+}
+
+.fui-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fui-modal-title {
+    padding-left: 0.5rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.fui-modal-close {
+    color: var(--fui-color-text-unselected);
+    background-color: var(--fui-color-bg-unselected);
+    border: none;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+    .fui-modal-close:hover {
+        color: var(--fui-color-text-hover);
+        background-color: var(--fui-color-bg-hover);
+    }
+
+/*******************************************************************************
+    Reorderable list
+*******************************************************************************/
+
+.fui-reorderable-row {
+    display: flex;
+    flex-direction: row;
+    padding: 0;
+}
+
+.fui-reorderable-cell {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0.1rem 0.3rem;
+}
+
+.fui-reorderable-item.fui-draggable:hover {
+    background-color: var(--fui-color-bg-dragdrop);
+}
+
+.fui-drag-handle {
+    display: flex;
+    align-items: center;
+    padding: 0.2rem 0.4rem;
+    cursor: grab;
+    color: var(--fui-color-text-base);
+    opacity: 0.4;
+    user-select: none;
+}
+
+    .fui-drag-handle:hover {
+        background-color: var(--fui-color-bg-dragdrop);
+        opacity: 1;
+    }
+
+.fui-reorderable-item--dropover {
+    border-top: 0.5rem solid var(--fui-color-bg-dragdrop-dropover);
+}
+
+.fui-reorderable-sentinel {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.1s, background-color 0.1s, outline-color 0.1s;
+    outline: 2px dashed transparent;
+    outline-offset: -2px;
+}
+
+.fui-reorderable-list--dragging > .fui-reorderable-sentinel {
+    height: 2rem;
+    outline-color: var(--fui-color-bg-dragdrop-dropover);
+}
+
+.fui-reorderable-sentinel--dropover {
+    background-color: var(--fui-color-bg-dragdrop-dropover);
+}
+
+/*******************************************************************************
+    Tooltip
+*******************************************************************************/
+
+.fui-tooltip {
+    position: absolute;
+    display: none;
+    z-index: var(--fui-z-tooltip);
+    pointer-events: none;
+    white-space: pre-line;
+    background: var(--fui-color-bg-tooltip);
+    color: var(--fui-color-text-tooltip);
+    border: 1px solid var(--fui-color-outline-tooltip);
+    border-radius: 2px;
+    padding: 4px;
+}
+
+/*******************************************************************************
+    Narrow screens
+*******************************************************************************/
+
+@media (max-width: 50rem) {
+    .fui-drag-handle {
+        display: none;
+    }
+}
