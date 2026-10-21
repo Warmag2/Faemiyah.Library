@@ -114,9 +114,10 @@ public class ContainerTests : ComponentTestBase
         var selected = new List<string>();
         var cut = Context.Render<ContainerTabSelector>(ps => ps
             .Add(p => p.Enabled, true)
-            .Add(p => p.TabNames, ["Meeting", "Expenses"])
             .Add(p => p.SelectedTab, "Meeting")
-            .Add(p => p.OnTabSelected, (string tab) => selected.Add(tab)));
+            .Add(p => p.OnTabSelected, (string tab) => selected.Add(tab))
+            .AddChildContent<ContainerTabItem>(cp => cp.Add(x => x.Name, "Meeting"))
+            .AddChildContent<ContainerTabItem>(cp => cp.Add(x => x.Name, "Expenses")));
 
         var buttons = cut.FindAll(".fui-tab button");
         buttons[0].ClassList.Should().Contain("fui-active");
@@ -130,7 +131,8 @@ public class ContainerTests : ComponentTestBase
     [Test]
     public void TabSelector_Disabled_IsHidden()
     {
-        var cut = Context.Render<ContainerTabSelector>(ps => ps.Add(p => p.TabNames, ["A"]));
+        var cut = Context.Render<ContainerTabSelector>(ps => ps
+            .AddChildContent<ContainerTabItem>(cp => cp.Add(x => x.Name, "A")));
 
         cut.Find(".fui-tabs").GetAttribute("style").Should().Be("display:none");
     }

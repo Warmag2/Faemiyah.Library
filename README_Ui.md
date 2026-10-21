@@ -30,7 +30,7 @@ The JavaScript (`Faemiyah.Ui.lib.module.js`) is a Blazor JavaScript initializer 
 | `ContainerExpander` | Switches between two contents with a corner button. |
 | `ContainerModal` | Modal dialog. The footer with primary and cancel buttons appears when `OnPrimary` is set. |
 | `ContainerReorderableList<TItem>` | Drag-and-drop reordering of an `IList<TItem>`, in place. Optional drag handle. |
-| `ContainerTabSelector`, `ContainerTab` | Tab row and tab content. The parent owns the selected tab. |
+| `ContainerTabSelector`, `ContainerTabItem`, `ContainerTabButton`, `ContainerTab` | Tab row with selectable tabs (`ContainerTabItem`) and command buttons (`ContainerTabButton`), plus tab content (`ContainerTab`). Any tab can be right-aligned with `AlignRight`. The parent owns the selected tab. |
 | `FormCheckbox` | Styled checkbox. |
 | `FormToggle` | Checkbox styled as a toggle button. |
 | `FormRadio<TItem>` | Radio group styled as toggle buttons. |
@@ -83,12 +83,13 @@ The component names and parameters are unchanged, with these additions:
 - `ContainerModal.CancelText` (default `Cancel`)
 - `FormTextArea.Rows` (default `10`)
 - `Tooltip` component
+- `ContainerTabItem` and `ContainerTabButton` as children of `ContainerTabSelector`, replacing the `TabNames` list; both support `AlignRight`.
 
 All buttons are `type="button"`, so they no longer submit forms.
 
 Parameter type changes:
 
-- `ContainerTabSelector.TabNames` is an `IReadOnlyList<string>`.
+- `ContainerTabSelector` takes `ContainerTabItem` (selectable) and `ContainerTabButton` (command) children instead of a `TabNames` list.
 - `BracketCreatorDelegate` returns `IReadOnlyList<PickBracket>`.
 - `InvalidOptionGenerator` returns `IEnumerable<string>`.
 

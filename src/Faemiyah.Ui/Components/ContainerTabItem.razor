@@ -1,0 +1,41 @@
+@* A selectable tab inside a ContainerTabSelector. *@
+@inherits BaseFaemiyahComponent
+
+<div class="fui-tab@(AlignRight ? " fui-align-right" : string.Empty)">
+    <button type="button" class="@FuiStyle.GetActiveClass(SelectedTab == Name)" @onclick="@Select">@Name</button>
+</div>
+
+@code
+{
+    /// <summary>
+    /// The owning tab selector.
+    /// </summary>
+    [CascadingParameter]
+    public ContainerTabSelector? Selector { get; set; }
+
+    /// <summary>
+    /// Name of the currently selected tab, cascaded by the owning selector.
+    /// </summary>
+    [CascadingParameter(Name = "SelectedTab")]
+    public string? SelectedTab { get; set; }
+
+    /// <summary>
+    /// Name of the tab, shown as its label and matched against the selected tab.
+    /// </summary>
+    [Parameter]
+    public string? Name { get; set; }
+
+    /// <summary>
+    /// Whether the tab is pushed to the opposite end of the tab row.
+    /// </summary>
+    [Parameter]
+    public bool AlignRight { get; set; }
+
+    private void Select()
+    {
+        if (Selector is not null && Name is not null)
+        {
+            Selector.Select(Name);
+        }
+    }
+}

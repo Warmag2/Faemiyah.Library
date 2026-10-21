@@ -1,0 +1,27 @@
+@* A tab-row button that runs a command instead of selecting a tab. *@
+@inherits BaseFaemiyahComponent
+
+<div class="fui-tab@(AlignRight ? " fui-align-right" : string.Empty)">
+    <button type="button" @onclick="@OnClick">@ChildContent</button>
+</div>
+
+@code
+{
+    /// <summary>
+    /// Whether the button is pushed to the opposite end of the tab row.
+    /// </summary>
+    [Parameter]
+    public bool AlignRight { get; set; }
+
+    /// <summary>
+    /// Content of the button, for example its label.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Invoked when the button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+}

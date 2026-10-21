@@ -2,13 +2,11 @@
 @inherits BaseFaemiyahComponent
 
 <div class="fui-tabs" style="@FuiStyle.HideElement(!Enabled)">
-    @foreach (var tab in TabNames)
-    {
-        <div class="fui-tab">
-            <button type="button" class="@FuiStyle.GetActiveClass(SelectedTab == tab)" @onclick="@(() => Select(tab))">@tab</button>
-        </div>
-    }
-    @ChildContent
+    <CascadingValue Value="this" IsFixed="true">
+        <CascadingValue Value="@SelectedTab" Name="SelectedTab">
+            @ChildContent
+        </CascadingValue>
+    </CascadingValue>
 </div>
 
 @code
@@ -26,13 +24,7 @@
     public string? SelectedTab { get; set; }
 
     /// <summary>
-    /// Names of the tabs, in display order.
-    /// </summary>
-    [Parameter]
-    public IReadOnlyList<string> TabNames { get; set; } = [];
-
-    /// <summary>
-    /// Extra content rendered after the tab buttons.
+    /// The tab items and command buttons shown in the row.
     /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
