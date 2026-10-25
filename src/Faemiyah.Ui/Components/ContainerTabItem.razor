@@ -2,7 +2,7 @@
 @inherits BaseFaemiyahComponent
 
 <div class="fui-tab@(AlignRight ? " fui-align-right" : string.Empty)">
-    <button type="button" class="@FuiStyle.GetActiveClass(SelectedTab == Name)" @onclick="@Select">@Name</button>
+    <button type="button" class="@GetStateClass()" @onclick="@Select">@Name</button>
 </div>
 
 @code
@@ -30,6 +30,23 @@
     /// </summary>
     [Parameter]
     public bool AlignRight { get; set; }
+
+    /// <summary>
+    /// Whether the tab is shown muted to signal that its content is disabled. The tab can still be selected, so its
+    /// read-only content stays reachable.
+    /// </summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string GetStateClass()
+    {
+        if (SelectedTab == Name)
+        {
+            return FuiStyle.Active;
+        }
+
+        return Disabled ? FuiStyle.Disabled : FuiStyle.Inactive;
+    }
 
     private void Select()
     {

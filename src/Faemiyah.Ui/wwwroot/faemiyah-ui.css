@@ -362,6 +362,12 @@
                 color: var(--fui-color-text-hover-selected);
             }
 
+        .fui-tab button.fui-disabled,
+        .fui-tab button.fui-disabled:hover {
+            background-color: var(--fui-color-bg-disabled);
+            color: var(--fui-color-text-disabled);
+        }
+
 .fui-align-right {
     margin-left: auto;
 }
