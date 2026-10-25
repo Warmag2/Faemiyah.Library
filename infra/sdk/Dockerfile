@@ -1,4 +1,5 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS base
+RUN apk add --no-cache python3
 RUN dotnet workload install wasm-tools
 WORKDIR /app
 
