@@ -7,15 +7,19 @@
   <PropertyGroup Label="Package metadata">
     <Authors>Warma</Authors>
     <Company>Faemiyah</Company>
-    <Product>Faemiyah UI</Product>
+    <Product>Faemiyah Library</Product>
     <Copyright>Faemiyah 2020-2026</Copyright>
-    <Description>Generic Blazor input and container components with a themeable stylesheet, usable from both Blazor Server and Blazor WebAssembly.</Description>
+    <Description>
+      - Generic Blazor input and container components with a themeable stylesheet, usable from both Blazor Server and Blazor WebAssembly.
+      - ServiceProvider extensions for adding standard-mode serializers and logging styles.
+      - Repository boilerplate for PostgreSql.
+    </Description>
     <PackageTags>blazor;razor;components;ui;forms</PackageTags>
     <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385" PrivateAssets="all" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
