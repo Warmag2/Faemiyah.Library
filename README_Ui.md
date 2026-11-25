@@ -30,12 +30,12 @@ The JavaScript (`Faemiyah.Ui.lib.module.js`) is a Blazor JavaScript initializer 
 | `ContainerExpander` | Switches between two contents with a corner button. |
 | `ContainerModal` | Modal dialog. The footer with primary and cancel buttons appears when `OnPrimary` is set. |
 | `ContainerReorderableList<TItem>` | Drag-and-drop reordering of an `IList<TItem>`, in place. Optional drag handle. |
-| `ContainerTabSelector`, `ContainerTabItem`, `ContainerTabButton`, `ContainerTab` | Tab row with selectable tabs (`ContainerTabItem`) and command buttons (`ContainerTabButton`), plus tab content (`ContainerTab`). Any tab can be right-aligned with `AlignRight`. The parent owns the selected tab. |
+| `ContainerTabSelector`, `ContainerTabItem`, `ContainerTabButton`, `ContainerTab` | Tab row with selectable tabs (`ContainerTabItem`) and command buttons (`ContainerTabButton`), plus tab content (`ContainerTab`). Any tab can be right-aligned with `AlignRight`. A `Disabled` tab is muted but can still be selected; when selected it has both `fui-active` and `fui-disabled`. The parent owns the selected tab. |
 | `FormCheckbox` | Styled checkbox. |
 | `FormToggle` | Checkbox styled as a toggle button. |
 | `FormRadio<TItem>` | Radio group styled as toggle buttons. |
 | `FormSelect<TItem>` | Drop-down select. |
-| `FormComboBox<TItem>` | Text input with a filtered option list. Only option keys are accepted. |
+| `FormComboBox<TItem>` | Text input with a filtered option list. Only option keys are accepted. `Id` sets the id of the text input, so a `<label for>` can point at it. |
 | `FormText`, `FormTextArea` | Text inputs, optionally rejecting values from `InvalidOptionGenerator`. |
 | `FormNumber` | Number input which commits on blur, Enter or Escape and clamps to `[Min, Max]`. |
 | `FormNumberPicker` | `FormNumber` with a drop-down of `PickBracket`s. |
@@ -70,7 +70,7 @@ Place one `Tooltip` component on the page and mark the target elements:
 
 ## Theming
 
-All colours, the control font and the z-indexes are CSS variables defined on `:root` in `faemiyah-ui.css`, for example `--fui-color-bg-selected`, `--fui-color-bg-hover`, `--fui-font-family-control` and `--fui-z-modal`. Override them in your own stylesheet after the library stylesheet.
+All colours, the control font and the z-indexes are CSS variables defined on `:root` in `faemiyah-ui.css`, for example `--fui-color-bg-selected`, `--fui-color-bg-hover`, `--fui-color-outline-focus` (keyboard focus ring), `--fui-font-family-control` and `--fui-z-modal`. Override them in your own stylesheet after the library stylesheet.
 
 Shared state classes are `fui-active`, `fui-inactive`, `fui-error`, `fui-reminder` and `fui-disabled`. `FuiStyle` exposes them and the `HideElement` and `GetActiveClass` helpers.
 

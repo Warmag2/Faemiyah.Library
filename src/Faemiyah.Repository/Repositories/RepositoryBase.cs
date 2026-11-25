@@ -85,6 +85,18 @@ public abstract class RepositoryBase<TContext, TKey, TEntity> : IEntityRepositor
     }
 
     /// <inheritdoc />
+    public async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> AddManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>>? duplicationPredicateFactory = null,
+        CancellationToken cancellationToken = default)
+    {
+        RequireEntities(entities);
+
+        await using var dbContext = await DatabaseContextProvider.GetDbContextAsync(cancellationToken: cancellationToken);
+        return await AddManyWithContextAsync(dbContext, entities, duplicationPredicateFactory, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<RepositoryResult<TEntity>> AddOrUpdateAsync(TEntity entity, Expression<Func<TEntity, bool>> duplicationPredicate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -111,6 +123,37 @@ public abstract class RepositoryBase<TContext, TKey, TEntity> : IEntityRepositor
         var updated = await UpdateWithContextAsync(context, entity, duplicationPredicate, cancellationToken);
 
         return updated.Status == OperationStatus.NotFound ? added : updated;
+    }
+
+    /// <inheritdoc />
+    public async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> AddOrUpdateManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken = default)
+    {
+        RequireEntities(entities);
+        ArgumentNullException.ThrowIfNull(duplicationPredicateFactory);
+
+        await using var dbContext = await DatabaseContextProvider.GetDbContextAsync(cancellationToken: cancellationToken);
+
+        var (result, inserted) = await TryAddOrUpdateManyWithContextAsync(
+            dbContext,
+            entities,
+            duplicationPredicateFactory,
+            cancellationToken);
+
+        // As in AddOrUpdateAsync: a race winner now matches its predicate, so a second pass updates it. Without an
+        // insert, no race can have been lost, and the failure stands.
+        if (result.Status == OperationStatus.Duplicate && inserted)
+        {
+            (result, _) = await TryAddOrUpdateManyWithContextAsync(
+                dbContext,
+                entities,
+                duplicationPredicateFactory,
+                cancellationToken);
+        }
+
+        return result;
     }
 
     /// <inheritdoc />
@@ -203,6 +246,95 @@ public abstract class RepositoryBase<TContext, TKey, TEntity> : IEntityRepositor
 
         await using var dbContext = await DatabaseContextProvider.GetDbContextAsync(cancellationToken: cancellationToken);
         return await UpdateWithContextAsync(dbContext, entity, duplicationPredicate, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> UpdateManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken = default)
+    {
+        RequireEntities(entities);
+        ArgumentNullException.ThrowIfNull(duplicationPredicateFactory);
+
+        await using var dbContext = await DatabaseContextProvider.GetDbContextAsync(cancellationToken: cancellationToken);
+        return await UpdateManyWithContextAsync(dbContext, entities, duplicationPredicateFactory, cancellationToken);
+    }
+
+    /// <summary>
+    /// Add several entities using the given context, saving them together.
+    /// </summary>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="entities">The entities to add.</param>
+    /// <param name="duplicationPredicateFactory">Builds, for each entity, a predicate to check for collision, or <b>null</b> to skip the check.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// <see cref="OperationStatus.Added"/> with the added entities, or <see cref="OperationStatus.Duplicate"/> when a
+    /// predicate matched an entity or a unique constraint rejected an insert.
+    /// </returns>
+    protected async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> AddManyWithContextAsync(
+        TContext dbContext,
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>>? duplicationPredicateFactory = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Every check precedes any staging, so a rejected batch leaves nothing on the context for a later save.
+        if (duplicationPredicateFactory != null)
+        {
+            foreach (var entity in entities)
+            {
+                if (await GetWithContextAsync(dbContext, duplicationPredicateFactory(entity), cancellationToken: cancellationToken) != null)
+                {
+                    return RepositoryResult<IReadOnlyCollection<TEntity>>.Failure(OperationStatus.Duplicate);
+                }
+            }
+        }
+
+        var snapshot = Snapshot(entities);
+
+        foreach (var entity in entities)
+        {
+            StageInsert(dbContext, entity);
+        }
+
+        Logger.LogInformation("Adding {Count} entities of type {Type}.", entities.Count, typeof(TEntity).Name);
+
+        return await SaveManyWithContextAsync(dbContext, OperationStatus.Added, [.. entities], snapshot, cancellationToken);
+    }
+
+    /// <summary>
+    /// Add or update several entities using the given context, saving them together.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="AddOrUpdateManyAsync"/>, this does not retry after losing an insert race, since the failed
+    /// save clears the context, and a retry would then save this batch without whatever else the caller had staged.
+    /// </remarks>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="entities">The entities to add or update.</param>
+    /// <param name="duplicationPredicateFactory">Builds, for each entity, the predicate locating an existing entity to replace.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// <see cref="OperationStatus.Added"/> with the written entities when every one was inserted, or
+    /// <see cref="OperationStatus.Updated"/> when at least one replaced an existing entity;
+    /// <see cref="OperationStatus.Conflict"/> when a stored entity was changed or removed meanwhile; or
+    /// <see cref="OperationStatus.Duplicate"/> when a unique constraint rejected the write.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a predicate matches more than one entity, or two entities match the same stored entity.
+    /// </exception>
+    protected async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> AddOrUpdateManyWithContextAsync(
+        TContext dbContext,
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken = default)
+    {
+        var (result, _) = await TryAddOrUpdateManyWithContextAsync(
+            dbContext,
+            entities,
+            duplicationPredicateFactory,
+            cancellationToken);
+
+        return result;
     }
 
     /// <summary>
@@ -554,9 +686,7 @@ public abstract class RepositoryBase<TContext, TKey, TEntity> : IEntityRepositor
         TEntity entity,
         CancellationToken cancellationToken = default)
     {
-        entity.UpdateTime = TimeProvider.GetUtcNow().UtcDateTime;
-
-        dbContext.Set<TEntity>().Add(entity);
+        StageInsert(dbContext, entity);
 
         Logger.LogInformation("Adding an entity of type {Type}.", typeof(TEntity).Name);
 
@@ -578,32 +708,59 @@ public abstract class RepositoryBase<TContext, TKey, TEntity> : IEntityRepositor
     {
         RequireMatchingIdentity(entity, existingEntity);
 
-        entity.Id = existingEntity.Id;
-        entity.UpdateTime = TimeProvider.GetUtcNow().UtcDateTime;
-
-        if (entity.ConcurrencyToken == default)
-        {
-            // Constructed rather than read, so adopt the stored revision. Must precede SetValues, which overwrites
-            // the tracked instance.
-            entity.ConcurrencyToken = existingEntity.ConcurrencyToken;
-        }
-
-        var entry = dbContext.Entry(existingEntity);
-
-        entry.CurrentValues.SetValues(entity);
-
-        // EF builds the UPDATE's WHERE clause from OriginalValues, which was snapshotted when foundEntity was loaded
-        // above -- so it holds our own read, and checking against it would compare a value to itself. Overwriting it
-        // with the revision on the entity is what makes the check real. Attaching the caller's entity would let EF
-        // snapshot this naturally, but throws when the entity is already tracked on this context, which derived
-        // repositories may legitimately do.
-        entry.OriginalValues[nameof(EntityBase<>.ConcurrencyToken)] = entity.ConcurrencyToken;
+        StageUpdate(dbContext, existingEntity, entity);
 
         Logger.LogInformation(
             "Updating an entity of type {Type}.",
             typeof(TEntity).Name);
 
         return await SaveWithContextAsync(dbContext, OperationStatus.Updated, existingEntity, cancellationToken);
+    }
+
+    /// <summary>
+    /// Update several entities using the given context, saving them together.
+    /// </summary>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="entities">The entities to update.</param>
+    /// <param name="duplicationPredicateFactory">Builds, for each entity, the predicate to find the existing entity with.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// <see cref="OperationStatus.Updated"/> with the updated entities, <see cref="OperationStatus.NotFound"/> when a
+    /// predicate matched no entity, <see cref="OperationStatus.Conflict"/> when a stored entity was changed or
+    /// removed meanwhile, or <see cref="OperationStatus.Duplicate"/> when a unique constraint rejected an update.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a predicate matches more than one entity, or two entities match the same stored entity.
+    /// </exception>
+    protected async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> UpdateManyWithContextAsync(
+        TContext dbContext,
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken = default)
+    {
+        var located = await LocateManyAsync(dbContext, entities, duplicationPredicateFactory, cancellationToken);
+
+        if (located.Contains(null))
+        {
+            Logger.LogError(
+                "Unable to update. An entity of type {Type} with the given predicate does not exist.",
+                typeof(TEntity).Name);
+
+            return RepositoryResult<IReadOnlyCollection<TEntity>>.Failure(OperationStatus.NotFound);
+        }
+
+        var snapshot = Snapshot(entities);
+        var written = new List<TEntity>(entities.Count);
+
+        foreach (var (entity, existing) in entities.Zip(located))
+        {
+            StageUpdate(dbContext, existing!, entity);
+            written.Add(existing!);
+        }
+
+        Logger.LogInformation("Updating {Count} entities of type {Type}.", entities.Count, typeof(TEntity).Name);
+
+        return await SaveManyWithContextAsync(dbContext, OperationStatus.Updated, written, snapshot, cancellationToken);
     }
 
     /// <summary>
@@ -774,5 +931,225 @@ public abstract class RepositoryBase<TContext, TKey, TEntity> : IEntityRepositor
         }
 
         return entities;
+    }
+
+    /// <summary>
+    /// Finds the stored entity each entity of a batch refers to.
+    /// </summary>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="entities">The batch.</param>
+    /// <param name="duplicationPredicateFactory">Builds, for each entity, the predicate to find the stored entity with.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The tracked stored entities, in the order of the batch, with <b>null</b> where none matched.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when the factory builds a <b>null</b> predicate.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a predicate matches more than one entity, two entities match the same stored entity, or an entity
+    /// does not match the identity of the one it located.
+    /// </exception>
+    private async Task<List<TEntity?>> LocateManyAsync(
+        TContext dbContext,
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken)
+    {
+        var located = new List<TEntity?>(entities.Count);
+        var seen = new HashSet<TEntity>(ReferenceEqualityComparer.Instance);
+
+        foreach (var entity in entities)
+        {
+            var predicate = duplicationPredicateFactory(entity);
+            RequirePredicate(predicate, nameof(LocateManyAsync));
+
+            var existing = await FindSingleEntityAsync(dbContext.Set<TEntity>(), predicate, cancellationToken);
+
+            if (existing != null)
+            {
+                RequireMatchingIdentity(entity, existing);
+
+                // The context returns one instance per row, so a repeat means two entities would write one row, and
+                // the later would silently win.
+                if (!seen.Add(existing))
+                {
+                    Logger.LogError(
+                        "Two entities of type {Type} in one batch matched the same stored entity.",
+                        typeof(TEntity).Name);
+
+                    throw new InvalidOperationException(
+                        $"Two entities of type {typeof(TEntity).Name} in the batch matched the same stored entity. " +
+                        "Each entity in a batch must identify a different one.");
+                }
+            }
+
+            located.Add(existing);
+        }
+
+        return located;
+    }
+
+    /// <summary>
+    /// Rejects a missing batch, or one with a missing entity in it.
+    /// </summary>
+    /// <param name="entities">The batch the caller supplied.</param>
+    /// <param name="parameterName">The caller's name for the batch, supplied by the compiler.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="entities"/> is <b>null</b>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="entities"/> contains <b>null</b>.</exception>
+    private static void RequireEntities(
+        IReadOnlyCollection<TEntity> entities,
+        [CallerArgumentExpression(nameof(entities))] string? parameterName = null)
+    {
+        ArgumentNullException.ThrowIfNull(entities, parameterName);
+
+        if (entities.Any(e => e is null))
+        {
+            throw new ArgumentException("The collection must not contain null.", parameterName);
+        }
+    }
+
+    /// <summary>
+    /// Saves a staged batch, putting the caller's entities back as they were supplied unless it succeeds.
+    /// </summary>
+    /// <remarks>
+    /// Nothing was saved, so the entities should not carry the identity, revision or timestamp staging assigned
+    /// them, and the caller can correct and resubmit the batch as it stands.
+    /// </remarks>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="status">The status to report on success.</param>
+    /// <param name="written">The entities to report on success.</param>
+    /// <param name="snapshot">The values recorded before staging.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The outcome of the save.</returns>
+    private async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> SaveManyWithContextAsync(
+        TContext dbContext,
+        OperationStatus status,
+        IReadOnlyCollection<TEntity> written,
+        List<(TEntity Entity, TKey Id, uint ConcurrencyToken, DateTime UpdateTime)> snapshot,
+        CancellationToken cancellationToken)
+    {
+        var saved = false;
+
+        try
+        {
+            var result = await SaveWithContextAsync(dbContext, status, written, cancellationToken);
+            saved = result.IsSuccess;
+
+            return result;
+        }
+        finally
+        {
+            if (!saved)
+            {
+                foreach (var (entity, id, concurrencyToken, updateTime) in snapshot)
+                {
+                    entity.Id = id;
+                    entity.ConcurrencyToken = concurrencyToken;
+                    entity.UpdateTime = updateTime;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Records the values a write assigns to the caller's entities, so a failed one can put them back.
+    /// </summary>
+    /// <param name="entities">The entities about to be written.</param>
+    /// <returns>The recorded values.</returns>
+    private static List<(TEntity Entity, TKey Id, uint ConcurrencyToken, DateTime UpdateTime)> Snapshot(
+        IReadOnlyCollection<TEntity> entities)
+    {
+        return [.. entities.Select(e => (e, e.Id, e.ConcurrencyToken, e.UpdateTime))];
+    }
+
+    /// <summary>
+    /// Stages an insert of the entity on the given context, without saving.
+    /// </summary>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="entity">The entity to insert.</param>
+    private void StageInsert(TContext dbContext, TEntity entity)
+    {
+        entity.UpdateTime = TimeProvider.GetUtcNow().UtcDateTime;
+
+        dbContext.Set<TEntity>().Add(entity);
+    }
+
+    /// <summary>
+    /// Stages an update of a tracked stored entity to the values of the given one, without saving.
+    /// </summary>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="existingEntity">The existing tracked entity.</param>
+    /// <param name="entity">The entity whose values to write.</param>
+    private void StageUpdate(TContext dbContext, TEntity existingEntity, TEntity entity)
+    {
+        entity.Id = existingEntity.Id;
+        entity.UpdateTime = TimeProvider.GetUtcNow().UtcDateTime;
+
+        if (entity.ConcurrencyToken == default)
+        {
+            // Constructed rather than read, so adopt the stored revision. Must precede SetValues, which overwrites
+            // the tracked instance.
+            entity.ConcurrencyToken = existingEntity.ConcurrencyToken;
+        }
+
+        var entry = dbContext.Entry(existingEntity);
+
+        entry.CurrentValues.SetValues(entity);
+
+        // EF builds the UPDATE's WHERE clause from OriginalValues, which was snapshotted when the stored entity was
+        // loaded -- so it holds our own read, and checking against it would compare a value to itself. Overwriting it
+        // with the revision on the entity is what makes the check real. Attaching the caller's entity would let EF
+        // snapshot this naturally, but throws when the entity is already tracked on this context, which derived
+        // repositories may legitimately do.
+        entry.OriginalValues[nameof(EntityBase<>.ConcurrencyToken)] = entity.ConcurrencyToken;
+    }
+
+    /// <summary>
+    /// Stages and saves a batch of inserts and updates, reporting whether any entity was to be inserted.
+    /// </summary>
+    /// <param name="dbContext">The database context to use.</param>
+    /// <param name="entities">The entities to add or update.</param>
+    /// <param name="duplicationPredicateFactory">Builds, for each entity, the predicate locating an existing entity to replace.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The outcome, and whether the batch contained an insert.</returns>
+    private async Task<(RepositoryResult<IReadOnlyCollection<TEntity>> Result, bool Inserted)> TryAddOrUpdateManyWithContextAsync(
+        TContext dbContext,
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken)
+    {
+        var located = await LocateManyAsync(dbContext, entities, duplicationPredicateFactory, cancellationToken);
+
+        var snapshot = Snapshot(entities);
+        var written = new List<TEntity>(entities.Count);
+        var inserted = false;
+        var updated = false;
+
+        foreach (var (entity, existing) in entities.Zip(located))
+        {
+            if (existing == null)
+            {
+                StageInsert(dbContext, entity);
+                written.Add(entity);
+                inserted = true;
+            }
+            else
+            {
+                StageUpdate(dbContext, existing, entity);
+                written.Add(existing);
+                updated = true;
+            }
+        }
+
+        Logger.LogInformation(
+            "Adding or updating {Count} entities of type {Type}.",
+            entities.Count,
+            typeof(TEntity).Name);
+
+        var result = await SaveManyWithContextAsync(
+            dbContext,
+            updated ? OperationStatus.Updated : OperationStatus.Added,
+            written,
+            snapshot,
+            cancellationToken);
+
+        return (result, inserted);
     }
 }

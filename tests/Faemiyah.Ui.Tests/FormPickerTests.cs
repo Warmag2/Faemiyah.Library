@@ -137,6 +137,18 @@ public class FormComboBoxTests : ComponentTestBase
 
         cut.FindAll(".fui-combobox-item").Should().BeEmpty();
     }
+
+    [Test]
+    public void Id_IsSetOnInputOnlyWhenGiven()
+    {
+        RenderComboBox([]).Find("input").HasAttribute("id").Should().BeFalse();
+
+        var cut = Context.Render<FormComboBox<int>>(ps => ps
+            .Add(p => p.Options, CreateOptions())
+            .Add(p => p.Id, "currency"));
+
+        cut.Find("input").Id.Should().Be("currency");
+    }
 }
 
 [TestFixture]

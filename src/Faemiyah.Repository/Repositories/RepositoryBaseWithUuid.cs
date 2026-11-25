@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Faemiyah.Repository.Entities;
@@ -38,21 +40,32 @@ public abstract class RepositoryBaseWithUuid<TContext, TKey, TEntity> : Reposito
     }
 
     /// <inheritdoc />
-    public async Task<RepositoryResult<TEntity>> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(entity);
-
-        // Hoisted so the expression closes over a plain Guid, which EF parameterises, rather than over the entity.
-        var uniqueId = entity.UniqueId;
-
-        return await UpdateAsync(entity, e => e.UniqueId == uniqueId, cancellationToken);
-    }
-
-    /// <inheritdoc />
     public async Task<RepositoryResult<TEntity>> DeleteAsync(Guid uniqueId, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await DatabaseContextProvider.GetDbContextAsync(cancellationToken: cancellationToken);
         return await DeleteWithContextAsync(dbContext, uniqueId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<TEntity?> GetAsync(Guid uniqueId, bool processIncludes = false, CancellationToken cancellationToken = default)
+    {
+        return await GetAsync(e => e.UniqueId == uniqueId, processIncludes, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<RepositoryResult<TEntity>> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        return await UpdateAsync(entity, ByUniqueId(entity), cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<RepositoryResult<IReadOnlyCollection<TEntity>>> UpdateManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        CancellationToken cancellationToken = default)
+    {
+        return await UpdateManyAsync(entities, ByUniqueId, cancellationToken);
     }
 
     /// <summary>
@@ -119,5 +132,18 @@ public abstract class RepositoryBaseWithUuid<TContext, TKey, TEntity> : Reposito
         throw new InvalidOperationException(
             $"Entity mismatch. The predicate located an entity of type {typeof(TEntity).Name} with unique ID " +
             $"{stored.UniqueId}, while the supplied entity possesses unique ID {source.UniqueId}.");
+    }
+
+    /// <summary>
+    /// Builds the predicate locating the stored counterpart of an entity by its unique ID.
+    /// </summary>
+    /// <param name="entity">The entity.</param>
+    /// <returns>The predicate.</returns>
+    private static Expression<Func<TEntity, bool>> ByUniqueId(TEntity entity)
+    {
+        // Hoisted so the expression closes over a plain Guid, which EF parameterises, rather than over the entity.
+        var uniqueId = entity.UniqueId;
+
+        return e => e.UniqueId == uniqueId;
     }
 }

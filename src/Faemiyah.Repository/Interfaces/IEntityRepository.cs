@@ -40,6 +40,32 @@ public interface IEntityRepository<TKey, TEntity>
     Task<RepositoryResult<TEntity>> AddAsync(TEntity entity, Expression<Func<TEntity, bool>>? duplicationPredicate = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Add several entities to the database, saving them together.
+    /// </summary>
+    /// <remarks>
+    /// Either every entity is added or none is, and on failure the entities are left as supplied. Entities within
+    /// the batch are not checked against each other; only a unique index catches two which collide.
+    /// </remarks>
+    /// <param name="entities">The entities to add.</param>
+    /// <param name="duplicationPredicateFactory">
+    /// Builds, for each entity, a predicate to check for collision, with one query per entity. Leave at null to skip
+    /// the check. Advisory unless a unique index backs it.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// <see cref="OperationStatus.Added"/> with the entities, in the order supplied, and their database generated
+    /// IDs, or <see cref="OperationStatus.Duplicate"/> when a predicate matched an entity or a unique constraint
+    /// rejected an insert.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="entities"/> is <b>null</b>.</exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="entities"/> contains <b>null</b>.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when a predicate matches more than one entity.</exception>
+    Task<RepositoryResult<IReadOnlyCollection<TEntity>>> AddManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>>? duplicationPredicateFactory = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Add to, or update an entity in the database.
     /// </summary>
     /// <param name="entity">The entity to add or update.</param>
@@ -58,6 +84,40 @@ public interface IEntityRepository<TKey, TEntity>
     /// Thrown when <paramref name="duplicationPredicate"/> matches more than one entity.
     /// </exception>
     Task<RepositoryResult<TEntity>> AddOrUpdateAsync(TEntity entity, Expression<Func<TEntity, bool>> duplicationPredicate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Add or update several entities in the database, saving them together.
+    /// </summary>
+    /// <remarks>
+    /// Each entity is matched as <see cref="AddOrUpdateAsync"/> matches one, by the predicate
+    /// <paramref name="duplicationPredicateFactory"/> builds for it, with one query per entity. Either every entity
+    /// is written or none is, and on failure the entities are left as supplied.
+    /// </remarks>
+    /// <param name="entities">The entities to add or update.</param>
+    /// <param name="duplicationPredicateFactory">
+    /// Builds, for each entity, the predicate locating an existing entity to replace. Advisory unless a unique index
+    /// backs it.
+    /// </param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// <see cref="OperationStatus.Added"/> with the written entities, in the order supplied, when every one was
+    /// inserted, which includes an empty batch, or <see cref="OperationStatus.Updated"/> when at least one replaced
+    /// an existing entity; <see cref="OperationStatus.Conflict"/> when one already existed and the stored entity has
+    /// been modified since the revision this call is working from, or was removed part way through; or
+    /// <see cref="OperationStatus.Duplicate"/> when a unique constraint the predicates do not describe rejected the
+    /// write.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="entities"/> or <paramref name="duplicationPredicateFactory"/> is <b>null</b>.
+    /// </exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="entities"/> contains <b>null</b>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a predicate matches more than one entity, or two entities match the same stored entity.
+    /// </exception>
+    Task<RepositoryResult<IReadOnlyCollection<TEntity>>> AddOrUpdateManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete entities from the database based on a predicate.
@@ -187,4 +247,35 @@ public interface IEntityRepository<TKey, TEntity>
     /// Thrown when <paramref name="duplicationPredicate"/> matches more than one entity.
     /// </exception>
     Task<RepositoryResult<TEntity>> UpdateAsync(TEntity entity, Expression<Func<TEntity, bool>> duplicationPredicate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Update several entities in the database, saving them together.
+    /// </summary>
+    /// <remarks>
+    /// Each entity is located as <see cref="UpdateAsync"/> locates one, by the predicate
+    /// <paramref name="duplicationPredicateFactory"/> builds for it, with one query per entity, and checked against
+    /// its own revision. Either every entity is updated or none is, and on failure the entities are left as supplied.
+    /// </remarks>
+    /// <param name="entities">The entities to update.</param>
+    /// <param name="duplicationPredicateFactory">Builds, for each entity, the predicate to find the existing entity with.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// <see cref="OperationStatus.Updated"/> with the updated entities, in the order supplied;
+    /// <see cref="OperationStatus.NotFound"/> when a predicate matched no entity;
+    /// <see cref="OperationStatus.Conflict"/> when a stored entity has been modified since the revision this call is
+    /// working from, which is the <see cref="EntityBase{TKey}.ConcurrencyToken"/> on the supplied entity when it
+    /// carries one, and otherwise the stored revision as read at the start of this call; or
+    /// <see cref="OperationStatus.Duplicate"/> when a unique constraint rejected an update.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="entities"/> or <paramref name="duplicationPredicateFactory"/> is <b>null</b>.
+    /// </exception>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="entities"/> contains <b>null</b>.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a predicate matches more than one entity, or two entities match the same stored entity.
+    /// </exception>
+    Task<RepositoryResult<IReadOnlyCollection<TEntity>>> UpdateManyAsync(
+        IReadOnlyCollection<TEntity> entities,
+        Func<TEntity, Expression<Func<TEntity, bool>>> duplicationPredicateFactory,
+        CancellationToken cancellationToken = default);
 }

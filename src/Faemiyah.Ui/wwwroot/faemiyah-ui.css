@@ -13,6 +13,7 @@
     --fui-color-bg-input: #FFFFFF;
     --fui-color-text-input: #000000;
     --fui-color-outline-base: gray;
+    --fui-color-outline-focus: #006BB7;
     --fui-color-bg-unselected: #E0E0E0;
     --fui-color-text-unselected: #000000;
     --fui-color-bg-selected: #646464;
@@ -341,11 +342,15 @@
         background-color: var(--fui-color-bg-unselected);
         color: var(--fui-color-text-unselected);
         border: none;
-        outline: none;
         cursor: pointer;
         padding: 10px 14px;
         font-size: 17px;
     }
+
+        .fui-tab button:focus-visible {
+            outline: 2px solid var(--fui-color-outline-focus);
+            outline-offset: -2px;
+        }
 
         .fui-tab button:hover {
             background-color: var(--fui-color-bg-hover);
@@ -368,6 +373,12 @@
             color: var(--fui-color-text-disabled);
         }
 
+        .fui-tab button.fui-active.fui-disabled,
+        .fui-tab button.fui-active.fui-disabled:hover {
+            background-color: var(--fui-color-bg-disabled-selected);
+            color: var(--fui-color-text-disabled-selected);
+        }
+
 .fui-align-right {
     margin-left: auto;
 }
@@ -380,13 +391,17 @@
     background-color: var(--fui-color-bg-unselected);
     color: var(--fui-color-text-unselected);
     border: none;
-    outline: none;
     cursor: pointer;
     padding: 10px 14px;
     font-size: 18px;
     text-align: left;
     width: 100%;
 }
+
+    .fui-accordion-button:focus-visible {
+        outline: 2px solid var(--fui-color-outline-focus);
+        outline-offset: -2px;
+    }
 
     .fui-accordion-button:hover {
         background-color: var(--fui-color-bg-hover);

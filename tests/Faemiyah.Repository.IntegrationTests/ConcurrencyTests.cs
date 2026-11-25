@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 using AwesomeAssertions;
@@ -215,5 +216,35 @@ public class ConcurrencyTests : IntegrationTestBase
 
         stored.Name.Should().Be("written by second", "the failed update was not retried by the later save");
         (await Repository.GetAllAsync()).Should().HaveCount(2);
+    }
+
+    /// <remarks>
+    /// Each entity is checked against its own revision, and one stale entity must keep the fresh ones unsaved too.
+    /// </remarks>
+    [Test]
+    public async Task UpdateManyAsync_WithOneStaleToken_ReturnsConflictAndUpdatesNone()
+    {
+        // Arrange
+        await Repository.AddManyAsync([new TestEntity { Name = "a", Value = 1 }, new TestEntity { Name = "b", Value = 2 }]);
+
+        var fresh = (await Repository.GetAsync(e => e.Value == 1)).ShouldExist();
+        var stale = (await Repository.GetAsync(e => e.Value == 2)).ShouldExist();
+        var competing = (await Repository.GetAsync(e => e.Value == 2)).ShouldExist();
+
+        competing.Name = "b by someone else";
+        (await Repository.UpdateAsync(competing, e => e.Value == 2)).ShouldSucceedAs(OperationStatus.Updated);
+
+        var freshUpdateTime = fresh.UpdateTime;
+
+        // Act
+        fresh.Name = "a by us";
+        stale.Name = "b by us";
+
+        var result = await Repository.UpdateManyAsync([fresh, stale], entity => e => e.Value == entity.Value);
+
+        // Assert
+        result.ShouldFailAs(OperationStatus.Conflict);
+        fresh.UpdateTime.Should().Be(freshUpdateTime, "a failed batch leaves the entities as supplied");
+        (await Repository.GetAllAsync()).Select(e => e.Name).Should().BeEquivalentTo("a", "b by someone else");
     }
 }

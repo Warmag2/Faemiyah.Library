@@ -403,4 +403,126 @@ public class RepositoryBaseTests : IntegrationTestBase
         withIncludes.Children.Should().HaveCount(2);
         withoutIncludes.Children.Should().BeNullOrEmpty();
     }
+
+    [Test]
+    public async Task AddManyAsync_AddsEveryEntityInTheOrderSupplied()
+    {
+        // Act
+        var added = (await Repository.AddManyAsync(
+            [new TestEntity { Name = "first", Value = 1 }, new TestEntity { Name = "second", Value = 2 }]))
+            .ShouldSucceedAs(OperationStatus.Added);
+
+        // Assert
+        added.Select(e => e.Name).Should().Equal("first", "second");
+        added.Should().OnlyContain(e => e.Id != 0);
+        (await Repository.GetAllAsync()).Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task AddManyAsync_WhenOnePredicateMatches_AddsNone()
+    {
+        // Arrange
+        await Repository.AddAsync(new TestEntity { Name = "taken" });
+
+        // Act
+        var result = await Repository.AddManyAsync(
+            [new TestEntity { Name = "free" }, new TestEntity { Name = "taken" }],
+            entity => e => e.Name == entity.Name);
+
+        // Assert
+        result.ShouldFailAs(OperationStatus.Duplicate);
+        (await Repository.GetAllAsync()).Should().ContainSingle().Which.Name.Should().Be("taken");
+    }
+
+    [Test]
+    public async Task UpdateManyAsync_UpdatesEveryEntity()
+    {
+        // Arrange
+        await Repository.AddManyAsync([new TestEntity { Name = "a", Value = 1 }, new TestEntity { Name = "b", Value = 2 }]);
+
+        // Act
+        var updated = (await Repository.UpdateManyAsync(
+            [new TestEntity { Name = "b", Value = 20 }, new TestEntity { Name = "a", Value = 10 }],
+            entity => e => e.Name == entity.Name))
+            .ShouldSucceedAs(OperationStatus.Updated);
+
+        // Assert
+        updated.Select(e => e.Value).Should().Equal(20, 10);
+        (await Repository.GetAllAsync()).Select(e => (e.Name, e.Value)).Should().BeEquivalentTo([("a", 10), ("b", 20)]);
+    }
+
+    [Test]
+    public async Task UpdateManyAsync_WhenOneIsMissing_UpdatesNone()
+    {
+        // Arrange
+        await Repository.AddAsync(new TestEntity { Name = "a", Value = 1 });
+
+        // Act
+        var result = await Repository.UpdateManyAsync(
+            [new TestEntity { Name = "a", Value = 10 }, new TestEntity { Name = "absent", Value = 20 }],
+            entity => e => e.Name == entity.Name);
+
+        // Assert
+        result.ShouldFailAs(OperationStatus.NotFound);
+        (await Repository.GetAllAsync()).Should().ContainSingle().Which.Value.Should().Be(1);
+    }
+
+    /// <remarks>
+    /// Both would write the same row, so the later would silently discard the earlier.
+    /// </remarks>
+    [Test]
+    public async Task UpdateManyAsync_TwoEntitiesMatchingOneStoredEntity_Throws()
+    {
+        // Arrange
+        await Repository.AddAsync(new TestEntity { Name = "a", Value = 1 });
+
+        // Act
+        var act = async () => await Repository.UpdateManyAsync(
+            [new TestEntity { Name = "a", Value = 10 }, new TestEntity { Name = "a", Value = 20 }],
+            entity => e => e.Name == entity.Name);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        (await Repository.GetAllAsync()).Should().ContainSingle().Which.Value.Should().Be(1);
+    }
+
+    [Test]
+    public async Task UpdateManyAsync_BatchContainingNull_Throws()
+    {
+        // Act
+        var act = async () => await Repository.UpdateManyAsync([null!], entity => e => e.Name == "a");
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Test]
+    public async Task AddOrUpdateManyAsync_MixedBatch_UpdatesTheExistingAndAddsTheNew()
+    {
+        // Arrange
+        await Repository.AddAsync(new TestEntity { Name = "existing", Value = 1 });
+
+        // Act
+        var written = (await Repository.AddOrUpdateManyAsync(
+            [new TestEntity { Name = "existing", Value = 10 }, new TestEntity { Name = "new", Value = 20 }],
+            entity => e => e.Name == entity.Name))
+            .ShouldSucceedAs(OperationStatus.Updated);
+
+        // Assert
+        written.Select(e => e.Value).Should().Equal(10, 20);
+        (await Repository.GetAllAsync()).Select(e => (e.Name, e.Value))
+            .Should().BeEquivalentTo([("existing", 10), ("new", 20)]);
+    }
+
+    [Test]
+    public async Task AddOrUpdateManyAsync_OnlyNewEntities_ReportsAdded()
+    {
+        // Act
+        var result = await Repository.AddOrUpdateManyAsync(
+            [new TestEntity { Name = "a" }, new TestEntity { Name = "b" }],
+            entity => e => e.Name == entity.Name);
+
+        // Assert
+        result.ShouldSucceedAs(OperationStatus.Added).Should().HaveCount(2);
+    }
 }

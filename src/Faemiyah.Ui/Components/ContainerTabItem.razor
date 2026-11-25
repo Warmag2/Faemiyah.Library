@@ -42,7 +42,7 @@
     {
         if (SelectedTab == Name)
         {
-            return FuiStyle.Active;
+            return Disabled ? $"{FuiStyle.Active} {FuiStyle.Disabled}" : FuiStyle.Active;
         }
 
         return Disabled ? FuiStyle.Disabled : FuiStyle.Inactive;

@@ -149,6 +149,17 @@ public class ContainerTests : ComponentTestBase
     }
 
     [Test]
+    public void TabSelector_SelectedDisabledTab_IsActiveAndMuted()
+    {
+        var cut = Context.Render<ContainerTabSelector>(ps => ps
+            .Add(p => p.Enabled, true)
+            .Add(p => p.SelectedTab, "Expenses")
+            .AddChildContent<ContainerTabItem>(cp => cp.Add(x => x.Name, "Expenses").Add(x => x.Disabled, true)));
+
+        cut.Find(".fui-tab button").ClassList.Should().Contain(["fui-active", "fui-disabled"]);
+    }
+
+    [Test]
     public void TabSelector_Disabled_IsHidden()
     {
         var cut = Context.Render<ContainerTabSelector>(ps => ps

@@ -100,7 +100,8 @@ update, and a conflicting write reports `OperationStatus.Conflict`. Leave it at 
 skipped, which is what lets a caller build an entity from a transport payload without participating.
 
 **Writes report their outcome rather than throwing.** `AddAsync`, `UpdateAsync`, `AddOrUpdateAsync`, `GetOrAddAsync`
-and `DeleteAsync` return a `RepositoryResult<T>` whose `Status` is one of:
+and `DeleteAsync` return a `RepositoryResult<T>`, as do the batch writes `AddManyAsync`, `UpdateManyAsync` and
+`AddOrUpdateManyAsync`. Its `Status` is one of:
 
 | Status      | Meaning                                                                                   |
 |-------------|-------------------------------------------------------------------------------------------|
@@ -133,9 +134,22 @@ switch (result.Status)
 }
 ```
 
+**Batch writes save together.** The `...ManyAsync` methods take a collection and a function building each entity's
+predicate, and write everything in one save: one stale revision, missing entity or constraint violation and nothing
+is written, with the entities left as supplied. Each entity is still located with its own query, so they suit
+batches of tens rather than thousands.
+
+```csharp
+var result = await orders.UpdateManyAsync(changed, order => o => o.Reference == order.Reference);
+```
+
 **Nullability is annotated.** Reads which return `null` to mean "not found" say so in their signatures, as does
 `RepositoryResult<T>.Value`. Consumers compiled with `<Nullable>disable</Nullable>` are unaffected.
 
+**Entities with a public ID get lookups by it.** `RepositoryBaseWithUuid` adds `GetAsync(uniqueId)`,
+`DeleteAsync(uniqueId)`, and `UpdateAsync(entity)` and `UpdateManyAsync(entities)`, which locate the stored entities by
+their `UniqueId`.
+
 ## Status
 
-Version 0.1.0. The public API is not yet stable.
+Version 0.7.3. The public API is not yet stable.

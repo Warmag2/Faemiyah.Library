@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using AwesomeAssertions;
 using Faemiyah.Repository.IntegrationTests.Fixtures;
@@ -73,7 +74,7 @@ public class RepositoryBaseWithUuidTests : IntegrationTestBase
             .ShouldSucceedAs(OperationStatus.Added);
 
         // Act
-        var fetched = (await UuidRepository.GetAsync(e => e.UniqueId == added.UniqueId)).ShouldExist();
+        var fetched = (await UuidRepository.GetAsync(added.UniqueId)).ShouldExist();
 
         // Assert
         fetched.Name.Should().Be("first");
@@ -85,8 +86,7 @@ public class RepositoryBaseWithUuidTests : IntegrationTestBase
     public async Task GetAsync_UnknownUniqueId_ReturnsNull()
     {
         // Act
-        var unknownId = Guid.NewGuid();
-        var fetched = await UuidRepository.GetAsync(e => e.UniqueId == unknownId);
+        var fetched = await UuidRepository.GetAsync(Guid.NewGuid());
 
         // Assert
         fetched.Should().BeNull();
@@ -416,5 +416,76 @@ public class RepositoryBaseWithUuidTests : IntegrationTestBase
         var stored = (await repository.GetAsync(e => e.UniqueId == beta.UniqueId)).ShouldExist();
 
         stored.Name.Should().Be("beta", "the rejected update left the row unchanged");
+    }
+
+    [Test]
+    public async Task UpdateManyAsync_ByUniqueId_UpdatesEveryEntity()
+    {
+        // Arrange
+        var added = (await UuidRepository.AddManyAsync(
+            [new TestUuidEntity { Name = "alpha" }, new TestUuidEntity { Name = "beta" }]))
+            .ShouldSucceedAs(OperationStatus.Added);
+
+        // Act
+        var result = await UuidRepository.UpdateManyAsync(
+            [.. added.Select(e => new TestUuidEntity { UniqueId = e.UniqueId, Name = e.Name + " renamed" })]);
+
+        // Assert
+        result.ShouldSucceedAs(OperationStatus.Updated);
+        (await UuidRepository.GetAllAsync()).Select(e => e.Name).Should().BeEquivalentTo("alpha renamed", "beta renamed");
+    }
+
+    /// <remarks>
+    /// Nothing was saved, so the entities must not carry values from the attempt, and the corrected batch can be
+    /// submitted again as it stands.
+    /// </remarks>
+    [Test]
+    public async Task AddManyAsync_RejectedByTheUniqueIndex_AddsNoneAndCanBeRetried()
+    {
+        // Arrange
+        var uniqueId = Guid.NewGuid();
+        TestUuidEntity[] batch =
+        [
+            new TestUuidEntity { Name = "first" },
+            new TestUuidEntity { UniqueId = uniqueId, Name = "second" },
+            new TestUuidEntity { UniqueId = uniqueId, Name = "third" },
+        ];
+        var updateTimes = batch.Select(e => e.UpdateTime).ToList();
+
+        // Act
+        var rejected = await UuidRepository.AddManyAsync(batch);
+        var afterRejection = batch.Select(e => (e.Id, e.UpdateTime)).ToList();
+
+        batch[2].UniqueId = Guid.NewGuid();
+
+        var retried = await UuidRepository.AddManyAsync(batch);
+
+        // Assert
+        rejected.ShouldFailAs(OperationStatus.Duplicate);
+        afterRejection.Should().Equal(updateTimes.Select(t => (0L, t)), "a failed batch leaves the entities as supplied");
+        retried.ShouldSucceedAs(OperationStatus.Added);
+        (await UuidRepository.GetAllAsync()).Should().HaveCount(3);
+    }
+
+    /// <remarks>
+    /// The batch counterpart of <see cref="AddOrUpdateAsync_BlockedByConstraintThePredicateDoesNotDescribe_ReturnsDuplicate"/>:
+    /// the retry after the failed insert finds nothing new to update, so the duplicate stands.
+    /// </remarks>
+    [Test]
+    public async Task AddOrUpdateManyAsync_BlockedByConstraintThePredicatesDoNotDescribe_ReturnsDuplicate()
+    {
+        // Arrange
+        var uniqueId = Guid.NewGuid();
+
+        await UuidRepository.AddAsync(new TestUuidEntity { UniqueId = uniqueId, Name = "alpha" });
+
+        // Act
+        var result = await UuidRepository.AddOrUpdateManyAsync(
+            [new TestUuidEntity { Name = "gamma" }, new TestUuidEntity { UniqueId = uniqueId, Name = "beta" }],
+            entity => e => e.Name == entity.Name);
+
+        // Assert
+        result.ShouldFailAs(OperationStatus.Duplicate);
+        (await UuidRepository.GetAllAsync()).Should().ContainSingle().Which.Name.Should().Be("alpha");
     }
 }
